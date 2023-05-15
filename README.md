@@ -41,6 +41,7 @@ C:\Users\user\                      User's files on windows.
         .gitignore                  Git configuration file for repository.
         build-util/                 Utilities used in the build process.
         dist/                       Folder containing software installers.
+        doc-init/                   Documentation for project initialization.
         doc-user-mkdocs-project/    MkDocs project for user documentation.
         owf-tstool-zabbix-plugin/   Maven project source code and supporting files.
           .classpath                Eclipse configuration file.
@@ -62,16 +63,6 @@ Additionally, the following table lists Eclipse project dependencies that are no
 |------------------------------------------------------------------------------------------|----------------------------------------------------|
 |[`cdss-lib-common-java`](https://github.com/OpenCDSS/cdss-lib-common-java)                |Library of core utility code used by multiple TSTool repositories (projects).|
 |[`cdss-lib-processor-ts-java`](https://github.com/OpenCDSS/cdss-lib-processor-ts-java)    |Library containing processor code for TSTool commands.|
-
-## New Eclipse Project Setup  ##
-
-**These instructions are for the first-time setup of the Zabbix plugin project,
-which is useful when creating other new plugins.**
-
-1.  Create a repository in GitHub and initialize with standard files.
-    Copy and modify relevant setup files from another similar project,
-    for example the `owf-tstool-aws-plugin` repository: `README.md`, `.gitignore`,
-    `.gitattributes`, `build-util/`.  Commit the changes as an initial commit.
 
 ## Adding to TSTool Eclipse Workspace ##
 

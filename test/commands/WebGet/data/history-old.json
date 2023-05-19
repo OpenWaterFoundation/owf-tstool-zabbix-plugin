@@ -4,10 +4,11 @@
     "params": {
         "history": 0,
         "output": "extend",
-        "itemids": "30600",
         "sortfield": "clock",
-        "sortorder": "DESC",
-        "limit": 100
+        "sortorder": "ASC",
+        "itemids": [
+            "32696"
+        ]
     },
     "id": 1,
     "auth": "INSERT_API_TOKEN"

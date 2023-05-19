@@ -47,6 +47,7 @@ public class TimeSeriesCatalog {
 	// Host data, listed alphabetically.
 	//private Double stationLatitude = null;
 	//private Double stationLongitude = null;
+	private String host = null;
 	private String hostDescription = null;
 	private String hostId = null;
 	private String hostName = null;
@@ -260,6 +261,10 @@ public class TimeSeriesCatalog {
 		return this.haveCheckDataProblemsBeenSet;
 	}
 
+	public String getHost( ) {
+		return this.host;
+	}
+
 	public String getHostDescription ( ) {
 		return this.hostDescription;
 	}
@@ -312,6 +317,41 @@ public class TimeSeriesCatalog {
 		return this.locId;
 	}
 
+	/**
+	 * Lookup time series catalog using the host group name and host.
+	 * This is called when reading a time series using a TSID.
+	 * @param tscatalogList0 list of TimeSeriesCatalog to search, for example the global list.
+	 * @param host Host.host to match, null to ignore
+	 * @param hostgroup.name HostGroup.name to match, null to ignore
+	 * @param item.name Item.name to match, null to ignore
+	 */
+	public static List<TimeSeriesCatalog> lookupCatalogForTsidParts ( List<TimeSeriesCatalog> tscatalogList0,
+		String host, String hostGroupName, String itemName ) {
+		List<TimeSeriesCatalog> tscatalogList = new ArrayList<>();
+		boolean doAdd = false;
+		if ( tscatalogList0 != null ) { 
+			for ( TimeSeriesCatalog tscatalog : tscatalogList0 ) {
+				doAdd = true;
+				if ( host != null ) {
+					if ( !tscatalog.getHost().equals(host) )
+						doAdd = false;
+				}
+				if ( hostGroupName != null ) {
+					if ( !tscatalog.getHostGroupName().equals(hostGroupName) )
+						doAdd = false;
+				}
+				if ( itemName != null ) {
+					if ( !tscatalog.getItemName().equals(itemName) )
+						doAdd = false;
+				}
+				if ( doAdd ) {
+					tscatalogList.add(tscatalog);
+				}
+			}
+		}
+		return tscatalogList;
+	}
+
 	public void setDataInterval ( String dataInterval ) {
 		this.dataInterval = dataInterval;
 	}
@@ -331,6 +371,10 @@ public class TimeSeriesCatalog {
 	 */
 	public void setHaveCheckDataProblemsBeenSet ( boolean haveCheckDataProblemsBeenSet ) {
 		this.haveCheckDataProblemsBeenSet = haveCheckDataProblemsBeenSet;
+	}
+
+	public void setHost ( String host ) {
+		this.host = host;
 	}
 
 	public void setHostDescription ( String hostDescription ) {

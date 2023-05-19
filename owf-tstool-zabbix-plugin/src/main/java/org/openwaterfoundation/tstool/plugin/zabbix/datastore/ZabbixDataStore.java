@@ -24,10 +24,9 @@ package org.openwaterfoundation.tstool.plugin.zabbix.datastore;
 
 import java.io.IOException;
 import java.net.URI;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +34,7 @@ import java.util.Map;
 import org.openwaterfoundation.tstool.plugin.zabbix.PluginMeta;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.ApiAuthType;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.ApiVersion;
+import org.openwaterfoundation.tstool.plugin.zabbix.dao.History;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.Host;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.HostGroup;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.Item;
@@ -49,6 +49,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 
 import RTi.TS.TS;
 import RTi.TS.TSIdent;
+import RTi.TS.TSUtil;
 import RTi.Util.GUI.InputFilter;
 import RTi.Util.GUI.InputFilter_JPanel;
 import RTi.Util.GUI.JWorksheet_AbstractExcelCellRenderer;
@@ -58,6 +59,8 @@ import RTi.Util.IO.RequirementCheck;
 import RTi.Util.Message.Message;
 import RTi.Util.String.StringUtil;
 import RTi.Util.Time.DateTime;
+import RTi.Util.Time.TimeInterval;
+import RTi.Util.Time.TimeUtil;
 import riverside.datastore.AbstractWebServiceDataStore;
 import riverside.datastore.DataStoreRequirementChecker;
 import riverside.datastore.PluginDataStore;
@@ -103,17 +106,17 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 	 * Global debug option for datastore, used for development and troubleshooting.
 	 */
 	private boolean debug = false;
-	
+
 	/**
 	 * Version of the API, in case logic needs to adapt to the version.
 	 */
 	private String apiVersion = "unknown";
-	
+
 	/**
 	 * The API major version, currently used for the authentication check.
 	 */
 	private int apiMajorVersion = -1;
-	
+
 	/**
 	 * Whether to use API token for login (as of version 6.0?, true), or older "auth" login (false).
 	 */
@@ -154,7 +157,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
         this.pluginProperties.put("Description", "Plugin to integrate TSTool with Zabbix web resources.");
         this.pluginProperties.put("Author", "Open Water Foundation, https://openwaterfoundation.org");
         this.pluginProperties.put("Version", PluginMeta.VERSION);
-        
+
         // Get the version:
         // - if major version is 6, authenticate with the ApiToken
         // - else, authenticate with older user and password and request "auth" once logged in
@@ -173,7 +176,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
         }
         if ( apiMajorVersion >= 6 ) {
         	// Newer authentication:
-        	// - no need to authenticate because the API token is read from the configuration and 
+        	// - no need to authenticate because the API token is read from the configuration and
         	this.apiAuthType = ApiAuthType.AUTH_HTTP_API_TOKEN;
         }
         else {
@@ -183,13 +186,13 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 	    	String password = props.getValue("SystemPassword");
         	authenticate ( login, password );
         }
-        
+
 	    // Read global data used throughout the session:
 	    // - in particular a cache of the TimeSeriesCatalog used for further queries
 
 	    readGlobalData();
 	}
-	
+
 	/**
 	 * Authenticate the session.
 	 * This handles the authentication type, which depends on the Zabbix API version.
@@ -415,7 +418,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 	public String getApiTokenParameter() {
 		return "token=" + this.apiToken;
 	}
-	
+
 	/**
 	 * Get the 'auth' JSON for requests, formatted as:
 	 * <pre>
@@ -489,7 +492,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 	}
 
 	/**
-	 * Get the "params" host filter JSON for a list of Host, no trailing comma.
+	 * Get the "params" host filter JSON for a list of Host.
 	 *  "filter": {
      *      "host": [
      *          "Zabbix server",
@@ -525,12 +528,17 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 	}
 
 	/**
-	 * Get the "params" JSON for a list of Host, no trailing comma.
+	 * Get the "params" JSON for a list of Host.
+     * @param addLeadingComma if true and the filter is non-empty, add a leading comma
 	 * @param hostList list of Host to include
 	 */
-	private String getParamHostIds ( List<Host> hostList ) {
+	private String getParamHostIds ( boolean addLeadingComma, List<Host> hostList ) {
 		if ( (hostList != null) && (hostList.size() > 0) ) {
-			StringBuilder b = new StringBuilder ( "\"hostids\": [");
+			StringBuilder b = new StringBuilder ();
+			if ( addLeadingComma ) {
+				b.append(", ");
+			}
+			b.append("\"hostids\": [");
 			int i = -1;
 			for ( Host host : hostList ) {
 				++i;
@@ -540,6 +548,72 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 				b.append ( "\"" + host.getHostid() + "\"" );
 			}
 			b.append("]");
+			return b.toString();
+		}
+		else {
+			return "";
+		}
+	}
+
+	/**
+	 * Get the "params" JSON for a list of itemid.
+     * @param addLeadingComma if true and the filter is non-empty, add a leading comma
+	 * @param itemidList list of 'itemid' to include
+	 */
+	private String getParamItemIds ( boolean addLeadingComma, List<String> itemidList ) {
+		if ( (itemidList != null) && (itemidList.size() > 0) ) {
+			StringBuilder b = new StringBuilder ();
+			if ( addLeadingComma ) {
+				b.append( ", ");
+			}
+			b.append("\"itemids\": [");
+			int i = -1;
+			for ( String itemid : itemidList ) {
+				++i;
+				if ( i > 0 ) {
+					b.append(", ");
+				}
+				b.append ( "\"" + itemid + "\"" );
+			}
+			b.append("]");
+			return b.toString();
+		}
+		else {
+			return "";
+		}
+	}
+
+	/**
+	 * Get the "params" JSON for a 'timefrom'.
+     * @param addLeadingComma if true and the filter is non-empty, add a leading comma
+	 * @param timefrom UNIX seconds for 'tomefrom' or -1 to not use
+	 */
+	private String getParamTimeFrom ( boolean addLeadingComma, long timefrom ) {
+		if ( timefrom > 0 ) {
+			StringBuilder b = new StringBuilder ();
+			if ( addLeadingComma ) {
+				b.append( ", ");
+			}
+			b.append("\"timefrom\": " + timefrom);
+			return b.toString();
+		}
+		else {
+			return "";
+		}
+	}
+
+	/**
+	 * Get the "params" JSON for a 'timetill'.
+     * @param addLeadingComma if true and the filter is non-empty, add a leading comma
+	 * @param timetill UNIX seconds for 'tometill' or -1 to not use
+	 */
+	private String getParamTimeTill ( boolean addLeadingComma, long timetill ) {
+		if ( timetill > 0 ) {
+			StringBuilder b = new StringBuilder ();
+			if ( addLeadingComma ) {
+				b.append( ", ");
+			}
+			b.append("\"timetill\": " + timetill);
 			return b.toString();
 		}
 		else {
@@ -756,7 +830,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 		Message.printStatus ( 2, routine, "Reading global data for datastore \"" + getName() + "\"." );
 
 		// Read the host groups.
-		
+
 		try {
 			this.globalHostGroupList = readHostGroupList();
 			Message.printStatus(2, routine, "Initialized " + this.globalHostGroupList.size() + " host groups." );
@@ -767,7 +841,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 		}
 
 		// Read the hosts.
-		
+
 		try {
 			this.globalHostList = readHostList();
 			Message.printStatus(2, routine, "Initialized " + this.globalHostList.size() + " hosts." );
@@ -780,7 +854,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 		// Read the items:
 		// - can't seem to query all without a filter such as host group
 		// - TODO smalers 2023-05-18 need to decide whether to read up front
-		
+
 		/*
 		try {
 			this.globalItemList = readItemList();
@@ -796,6 +870,9 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 		// However, the initial implementation of readTimeSeries reads the list each time.
 		// The cached list is used to create choices for the UI in order to ensure fast performance.
 		// Therefore the slowdown is only at TSTool startup.
+		// TODO smalers 2023-05-18 the following fails:
+		// - is there a limit on how many records can be returned?
+		// - is there a host or item that causes an issue?
 		try {
 			String tsid = null;
     		String dataTypeReq = null;
@@ -804,9 +881,9 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
     		// Read the catalog for all time series.
 			this.globalTscatalogList = readTimeSeriesCatalog(tsid, dataTypeReq, dataIntervalReq, ifp );
 			Message.printStatus(2, routine, "Read " + this.globalTscatalogList.size() + " time series catalog." );
-			
+
 			// Loop through and create the lists of location ID and time series short name used in the ReadZabbix command editor.
-			
+
 			/*
 			String stationNo;
 			String tsShortName;
@@ -816,7 +893,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 			for ( TimeSeriesCatalog tscatalog : this.tscatalogList ) {
 				stationNo = tscatalog.getStationNo();
 				tsShortName = tscatalog.getTsShortName();
-				
+
 				found = false;
 				for ( String stationNo2 : this.locIdList ) {
 					if ( stationNo2.equals(stationNo) ) {
@@ -850,6 +927,50 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 			Message.printWarning(3, routine, e );
 		}
 	}
+
+    /**
+     * Read the history list from the web service.
+     * See (current): https://www.zabbix.com/documentation/current/en/manual/api/reference/history/get
+     * See (5.4):  https://www.zabbix.com/documentation/5.4/en/manual/api/reference/history/get
+     * @param itemid itemid to match
+     * @param timeFrom timestamp to start read
+     * @param timeTill timestamp to end read
+     * @return the history list, may be an empty list if a problem or no data
+     */
+    private List<History> readHistoryList ( String itemid, long timeFrom, long timeTill) {
+		String routine = getClass().getSimpleName() + ".readHistoryList";
+		String requestUrl = getServiceRootURI().toString();
+		List<String> itemidList = new ArrayList<>();
+		itemidList.add(itemid);
+		// Seems to require 'history' and/or 'output'.
+		String requestData =
+			"{"
+				+ "\"jsonrpc\": \"2.0\","
+				+ "\"method\": \"history.get\","
+				+ "\"params\": {"
+					+ "\"history\": 0,"
+					+ "\"output\": \"extend\","
+					+ "\"sortfield\": \"clock\","
+					+ "\"sortorder\": \"ASC\""
+					+ getParamTimeFrom(true, timeFrom)
+					+ getParamTimeTill(true, timeTill)
+					+ getParamItemIds(true, itemidList)
+				+ "},"
+				+ "\"id\": 1"
+				+ getAuthJSON()
+    		+ "}";
+		Message.printStatus(2, routine, "Request data = " + requestData);
+		String dataElement = "result";  // 'result' contains an array of the objects.
+		try {
+			String historyJson = JacksonToolkit.getInstance().getJsonFromWebServiceUrl ( requestUrl, getApiToken(), requestData, dataElement );
+			List<History> history = JacksonToolkit.getInstance().getObjectMapper().readValue(historyJson, new TypeReference<List<History>>(){});
+			return history;
+		}
+		catch ( Exception e ) {
+			Message.printWarning(3,routine,e);
+			return new ArrayList<History>();
+		}
+    }
 
     /**
      * Read the host list for all hosts from the web service.
@@ -946,7 +1067,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 				+ "\"jsonrpc\": \"2.0\","
 				+ "\"method\": \"item.get\","
 				+ "\"params\": {"
-					+ getParamHostIds(hostList)
+					+ getParamHostIds(false, hostList)
 				+ "},"
 				+ "\"id\": 1"
 				+ getAuthJSON()
@@ -965,6 +1086,15 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
     }
 
     /**
+     * Red the items matching a host group name and host.
+     * This is called from ReadTimeSeriesCatalog.
+     */
+    /*
+    private List<Item> readItemListForHostGroupAndHost ( String hostGroupName, String host ) {
+    }
+    */
+
+    /**
      * Read a single time series given its time series identifier using default read properties.
      * This is typically called by TSID command, which uses default properties.
      * @param tsid time series identifier.
@@ -974,9 +1104,10 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
      */
     public TS readTimeSeries ( String tsid, DateTime readStart, DateTime readEnd, boolean readData ) {
     	String routine = getClass().getSimpleName() + ".readTimeSeries";
-	/*
+
     	try {
     		Message.printStatus(2, routine, "Reading time series \"" + tsid + "\".");
+    		HashMap<String,Object> readProperties = null;
     		return readTimeSeries ( tsid, readStart, readEnd, readData, null );
     	}
     	catch ( Exception e ) {
@@ -984,8 +1115,6 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
     		Message.printWarning(2, routine, e);
     		throw new RuntimeException ( e );
     	}
-    */
-    	return null;
     }
 
     /**
@@ -995,24 +1124,127 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
      * @param readEnd end of read, will be set to 'periodEnd' service parameter.
      * @param readProperties additional properties to control the query:
      * <ul>
-     * <li> "IrregularInterval" - irregular interval (e.g., "IrregHour" to use instead of TSID interval,
-     *      where the TSID intervals corresponds to the web services.</li>
-     * <li> "Read24HourAsDay" - string "false" (default) or "true" indicating whether 24Hour interval time series
-     *      should be output as 1Day time series.</li>
-     * <li> "ReadDayAs24Hour" - string "false" (default) or "true" indicating whether day interval time series
-     *      should be output as 24Hour time series.</li>
      * <li> "Debug" - if true, turn on debug for the query</li>
      * </ul>
      * @return the time series or null if not read
      */
-    /*
     public TS readTimeSeries ( String tsidReq, DateTime readStart, DateTime readEnd,
     	boolean readData, HashMap<String,Object> readProperties ) throws Exception {
+    	String routine = getClass().getSimpleName() + ".readTimeSeries";
 
-    	TS ts = null;
+    	// Create a time series identifier for the requested TSID:
+    	// - the actual output may be set to a different identifier based on the above properties
+    	// - also save interval base and multiplier for the original request
+    	TSIdent tsidentReq = TSIdent.parseIdentifier(tsidReq);
+   		int intervalBaseReq = tsidentReq.getIntervalBase();
+   		int intervalMultReq = tsidentReq.getIntervalMult();
+   		boolean isRegularIntervalReq = TimeInterval.isRegularInterval(intervalBaseReq);
+
+    	// Up front, check for invalid request and throw exceptions:
+   		// - some cases are OK as long as IrregularInterval was specified in ReadKiWIS
+
+    	// Time series catalog for the single matching time series.
+ 		TimeSeriesCatalog tscatalog = null;
+
+ 		// Get the location:
+ 		// - remove surrounding quotes
+ 		// - the locId corresponds to the host.host
+ 		String locId = tsidentReq.getLocation();
+ 		locId = locId.replace("'", "");
+ 		// Get the data source:
+ 		// - remove surrounding quotes
+ 		// - the dataSource corresponds to the hostgroup.name
+ 		String dataSource = tsidentReq.getSource();
+ 		dataSource = dataSource.replace("'", "");
+ 		// Get the data type:
+ 		// - remove surrounding quotes
+ 		// - the dataType corresponds to the item.name
+ 		String dataType = tsidentReq.getType();
+ 		dataType = dataType.replace("'", "");
+
+ 		// Create the time series.
+ 		TS ts = null;
+    	try {
+    		ts = TSUtil.newTimeSeries(tsidentReq.toString(), true);
+    		ts.setIdentifier(tsidentReq);
+    	}
+    	catch ( Exception e ) {
+    		throw new RuntimeException ( e );
+    	}
+
+    	// Get the matching TimeSeriesCatalog.
+    	String dataTypeReq = null;
+    	String dataIntervalReq = null;
+    	InputFilter_JPanel ifp = null;
+    	List<TimeSeriesCatalog> tscatalogList = readTimeSeriesCatalog ( tsidReq, dataTypeReq, dataIntervalReq, ifp );
+		if ( tscatalogList.size() == 0 ) {
+			throw new RuntimeException ( "Did not match any 'tscatalog' for tsid \"" + tsidReq + "\".");
+		}
+		else if ( tscatalogList.size() == 1 ) {
+			tscatalog = tscatalogList.get(0);
+		}
+		else {
+			throw new RuntimeException ( "Matched " + tscatalogList.size()
+				+ " 'tscatalog' but expecting 1 for TSID \"" + tsidReq + "\".");
+		}
+
+    	if ( tscatalog == null ) {
+    		throw new RuntimeException ( "Unable to match 'tscatalog' for tsid = \"" + tsidReq + "\"." );
+    	}
+
+   		// Set the standard time series properties from the catalog.
+    	ts.setDataUnits(tscatalog.getDataUnits());
+    	ts.setDataUnitsOriginal(tscatalog.getDataUnits());
+    	setTimeSeriesProperties(ts, tscatalog);
+
+    	if ( readData ) {
+    		// Read the 'history' for the time series.
+    		long timeFrom = -1;
+    		long timeTill = -1;
+    		if ( readStart != null ) {
+    			timeFrom = TimeUtil.toUnixTime(readStart, true);
+    		}
+    		if ( readEnd != null ) {
+    			timeTill = TimeUtil.toUnixTime(readEnd, true);
+    		}
+    		List<History> historyList = readHistoryList ( tscatalog.getItemId(), timeFrom, timeTill );
+    		Message.printStatus(2,routine,"Read " + historyList.size() + " history records for timefrom="
+    			+ timeFrom + " timetill=" + timeTill + ".");
+    		// If any data were returned, add to the time series.
+    		double value;
+    		History history = null;
+    		DateTime dt = null;
+    		if ( historyList.size() > 0 ) {
+    			// Set the period:
+    			// - note that 'clock' is seconds but TimeUtil.fromUnixTime() accepts ms.
+    			long clockStart = Long.parseLong(historyList.get(0).getClock());
+    			DateTime dataStart = TimeUtil.fromUnixTime(clockStart*1000, null);
+    			long clockEnd = Long.parseLong(historyList.get(historyList.size() - 1).getClock());
+    			DateTime dataEnd = TimeUtil.fromUnixTime(clockEnd*1000, null);
+    			ts.setDate1(dataStart);
+    			ts.setDate1Original(dataStart);
+    			ts.setDate2(dataEnd);
+    			ts.setDate2Original(dataEnd);
+    			for ( int i = 0; i < historyList.size(); i++ ) {
+    				history = historyList.get(i);
+    				long clock = Long.parseLong(history.getClock())*1000;
+    				value = Double.parseDouble(history.getValue());
+    				if ( i == 0 ) {
+    					// Create the DateTime the first time.
+    					dt = TimeUtil.fromUnixTime(clock, null);
+    					dt.setPrecision(DateTime.PRECISION_SECOND);
+    				}
+    				else {
+    					// Reuse the same DateTime.
+    					TimeUtil.fromUnixTime(clock, dt);
+    				}
+    				ts.setDataValue(dt, value);
+    			}
+    		}
+    	}
+
     	return ts;
     }
-    */
 
 	/**
 	 * Read time series catalog, which uses the "/getTimeseriesList" web service query.
@@ -1030,7 +1262,6 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 		StringBuilder requestUrl = null;
 		String requestUrlString = null;
 
-		TSIdent tsident = null;
 		// The following are checked below to know when the data type contains a _1, etc.
 		String tsidDataTypeReq = null;
 		String tsidDataSubTypeReq = null;
@@ -1049,73 +1280,105 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 		List<Item> itemList = new ArrayList<>();
 
 		if ( (tsid != null) && !tsid.isEmpty() ) {
-			// Form the web service request based on the TSID parts.
+			TSIdent tsident = null;
 			try {
 				tsident = TSIdent.parseIdentifier(tsid);
 			}
 			catch ( Exception e ) {
-				throw new RuntimeException("Error parsing the requested time series identifier \"" + tsid + "\"");
+				throw new RuntimeException ( "Error parsing TSID \"" + tsid + "\"" );
 			}
-			requestUrl = new StringBuilder(
-				getServiceRootURI() + "/stations/metadata?" + getApiTokenParameter() + "&complete=1&sensorvars=1");
-			// Request the specific station.
-			requestUrl.append("&stid=" + tsident.getLocation());
-			// Request the main variable:
-			// - data type may include the main sensor variable and the numbered variable, separated by a dash
+			// Get the location:
+			// - remove surrounding quotes
+			// - the locId corresponds to the host.host
+
+			String locId = tsident.getLocation();
+			locId = locId.replace("'", "");
+			// Get the data source:
+			// - remove surrounding quotes
+			// - the dataSource corresponds to the hostgroup.name
+			String dataSource = tsident.getSource();
+			dataSource = dataSource.replace("'", "");
+			// Get the data type:
+			// - remove surrounding quotes
+			// - the dataType corresponds to the item.name
 			String dataType = tsident.getType();
-			if ( dataType.indexOf("-") > 0 ) {
-				// Need to use the first part.
-				String [] parts = dataType.split("-");
-				dataType = parts[0].trim();
-				tsidDataTypeReq = parts[0].trim();
-				tsidDataSubTypeReq = parts[1].trim();
+			dataType = dataType.replace("'", "");
+
+			boolean useCache = true;
+			if ( useCache ) {
+				// Find the time series in the global time series catalog.
+				List<TimeSeriesCatalog> tsidCatalogList =
+					TimeSeriesCatalog.lookupCatalogForTsidParts ( this.globalTscatalogList, locId, dataSource, dataType );
+				// Should match a single time series.
+				if ( tsidCatalogList.size() == 0 ) {
+					throw new RuntimeException ( "Did not match any 'tscatalog' for tsid \"" + tsid + "\".");
+				}
+				else if ( tsidCatalogList.size() == 1 ) {
+					return tsidCatalogList;
+				}
+				else {
+					throw new RuntimeException ( "Matched " + tsidCatalogList.size()
+						+ " 'tscatalog' but expecting 1 for TSID \"" + tsid + "\".");
+				}
 			}
 			else {
-				// Only the main data type is requested.
-				tsidDataTypeReq = dataType;
-				tsidDataSubTypeReq = null;
+				// Read the time series catalog for the specific TSID:
+				// - need to read the matching Item
+
+				throw new RuntimeException ( "Reading a time series without using the catalog is not implemented." );
+				//itemList = readItemListForHostGroupAndHost ( dataSource, locId );
 			}
-			requestUrl.append("&var=" + dataType);
-			Message.printStatus(2, routine, "Reading 1 station time series metadata using:" );
-			Message.printStatus(2, routine, "  " + requestUrlString);
 		}
 		else {
-			// Reading 1+ time series using the provided filter parameters.
-			requestUrl = new StringBuilder(
-				getServiceRootURI() + "/stations/metadata?" + getApiTokenParameter() + "&complete=1&sensorvars=1");
-
-			// Add filters for the data type and time step.
-
-			if ( (dataTypeReq != null) && !dataTypeReq.isEmpty() && !dataTypeReq.equals("*") ) {
-				try {
-					//requestUrl.append ( "&var=" + URLEncoder.encode(dataTypeReq,StandardCharsets.UTF_8.toString()) );
-					requestUrl.append ( "&var=" + dataTypeReq );
-				}
-				catch ( Exception e ) {
-					// TODO smalers 2023-01-01 should not happen.
-				}
-			}
-
 			if ( (dataIntervalReq != null) && !dataIntervalReq.isEmpty() && !dataIntervalReq.equals("*") ) {
 				// TODO smalers 2023-05-17 how to determine average, etc.
 				// Default to 'IrregSecond'.
 			}
-			
+
 			// Zabbix items correspond to data types + interval.
 			// However, must limit the 'item' queries using a host group or host.
 			// Determine if host group or host is specified in the input filter.
-			
+
 			String hostGroupName = getInputFilterWhere ( ifp, "hostgroup.name" );
 			String hostName = getInputFilterWhere ( ifp, "host.name" );
 			String hostHost = getInputFilterWhere ( ifp, "host.host" );
 			Message.printStatus(2, routine, "hostGroupName=\"" + hostGroupName + "\" hostName=\"" + hostName + "\" host=\"" + hostHost + "\"");
-			
+
 			List<Host> hostList = new ArrayList<>();
-			if ( (hostGroupName == null) && (hostName == null) ) {
+			if ( (hostGroupName == null) && (hostName == null) && (hostHost == null) ) {
 				// No host name or host was requested:
 				// - get all the hosts and query all associated items
 				// - can use the global list of hosts
-				itemList = readItemList ( this.globalHostList );
+				// - this does not seem to work on the full list so read 25 at a time
+				int iChunk = 15;
+				int iStart = -iChunk, iEnd = -1;  // Zero index positions in global host to read.
+				while ( true ) {
+					// Set the indices to get hosts.
+					iStart += iChunk;
+					iEnd += iChunk;
+					if ( iStart >= this.globalHostList.size() ) {
+						// No more data to read.
+						break;
+					}
+					if ( iEnd >= this.globalHostList.size() ) {
+						iEnd = this.globalHostList.size() - 1;
+					}
+					// Get a list of Host to read.
+					List<Host> hostSubList = new ArrayList<>();
+					for ( int i = iStart; i <= iEnd; i++ ) {
+						hostSubList.add(this.globalHostList.get(i));
+					}
+					try {
+						Message.printStatus(2, routine, "Reading items for hosts " + iStart + " through " + iEnd );
+						List<Item> itemSubList = readItemList ( hostSubList );
+						itemList.addAll(itemSubList);
+						Message.printStatus(2, routine, "  Read " + itemSubList.size() + " items, now have " + itemList.size() + " total." );
+					}
+					catch ( Exception e ) {
+						Message.printWarning(3, routine, "  Error reading items." );
+						Message.printWarning(3, routine, e );
+					}
+				}
 			}
 			else if ( hostHost != null ) {
 				// Host takes precedence over the group.
@@ -1175,6 +1438,8 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 			//Message.printStatus(2, routine, "  " + requestUrlString);
 		}
 
+		// If here have matching 'Item' to process into TimeSeriesCatalog.
+
 		List<TimeSeriesCatalog> tscatalogList = new ArrayList<>();
 		String dataInterval = "IrregSecond";
 
@@ -1182,7 +1447,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 		for ( Item item : itemList ) {
 
 			TimeSeriesCatalog tscatalog = new TimeSeriesCatalog();
-			
+
 			// Look up the related host from the cached data.
 			Host host = Host.lookupHostForId ( this.globalHostList, item.getHostid() );
 
@@ -1206,6 +1471,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 				}
 
 				// Host data, listed alphabetically.
+				tscatalog.setHost ( host.getHost() );
 				tscatalog.setHostDescription ( host.getDescription() );
 				tscatalog.setHostId ( host.getHostid() );
 				tscatalog.setHostName ( host.getName() );
@@ -1215,11 +1481,11 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 			tscatalog.setItemDelay ( item.getDelay() );
 			tscatalog.setItemHistory ( item.getHistory() );
 			tscatalog.setItemId ( item.getItemid() );
-			tscatalog.setItemKey ( item.getKey() );  
+			tscatalog.setItemKey ( item.getKey() );
 			tscatalog.setItemName ( item.getName() );
 			tscatalog.setItemUnits ( item.getUnits() );
 			tscatalog.setItemValueType ( item.getValueType() );
-			
+
 			tscatalogList.add(tscatalog);
 		}
 

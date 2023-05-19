@@ -46,18 +46,31 @@ TextEdit(InputFile="data\host-names-old.json",SearchFor="INSERT_API_TOKEN",Repla
 WebGet(URI="https://zabbix-web.trilynx-novastar.systems/zabbix/api_jsonrpc.php",EncodeURI="False",PayloadFile="results\host-names-old.json",HttpHeaders="Content-Type:application/json-rpc",LocalFile="results/Host-names.json")
 NewObject(ObjectID="Host_Names",InputFile="results\Host-names.json")
 #
-# Items:
+# Items (2 hosts):
 # - results are in an array
 # - apparently must specify a filter such as hostids (can't request all items?)
+# - read a couple of hostids
 TextEdit(InputFile="data\item-hostids-old.json",SearchFor="INSERT_API_TOKEN",ReplaceWith="${ZabbixApiToken}",OutputFile="results/item-hostids-old.json")
 SetDebugLevel(LogFileLevel="1")
 WebGet(URI="https://zabbix-web.trilynx-novastar.systems/zabbix/api_jsonrpc.php",EncodeURI="False",PayloadFile="results\item-hostids-old.json",HttpHeaders="Content-Type:application/json-rpc",LocalFile="results/Item-hostids.json")
 SetDebugLevel(ScreenLevel="0",LogFileLevel="0")
 NewObject(ObjectID="Item-hostids",InputFile="results\Item-hostids.json")
 #
+# Items (all hosts):
+# - results are in an array
+# - apparently must specify a filter such as hostids (can't request all items?)
+# - read a couple of hostids
+TextEdit(InputFile="data\item-hostids-all-old.json",SearchFor="INSERT_API_TOKEN",ReplaceWith="${ZabbixApiToken}",OutputFile="results/item-hostids-all-old.json")
+# SetDebugLevel(LogFileLevel="1")
+WebGet(URI="https://zabbix-web.trilynx-novastar.systems/zabbix/api_jsonrpc.php",EncodeURI="False",PayloadFile="results\item-hostids-all-old.json",HttpHeaders="Content-Type:application/json-rpc",LocalFile="results/Item-hostids-all.json")
+# SetDebugLevel(ScreenLevel="0",LogFileLevel="0")
+NewObject(ObjectID="Item-hostids-all",InputFile="results\Item-hostids-all.json")
+#
 # History:
 # - results are in an array
 # - must specify a filter such as itemids
 TextEdit(InputFile="data\history-old.json",SearchFor="INSERT_API_TOKEN",ReplaceWith="${ZabbixApiToken}",OutputFile="results/history-old.json")
+SetDebugLevel(LogFileLevel="1")
 WebGet(URI="https://zabbix-web.trilynx-novastar.systems/zabbix/api_jsonrpc.php",EncodeURI="False",PayloadFile="results\history-old.json",HttpHeaders="Content-Type:application/json-rpc",LocalFile="results/History.json")
+SetDebugLevel(ScreenLevel="0",LogFileLevel="0")
 NewObject(ObjectID="History",InputFile="results\History.json")

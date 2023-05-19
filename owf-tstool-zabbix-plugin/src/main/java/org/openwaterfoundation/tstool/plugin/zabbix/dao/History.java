@@ -46,6 +46,10 @@ public class History {
 
 	/**
 	 * History 'value'.
+	 * Even though the Zabbix documentation indicates that the value can have a different type
+	 * (float, int, string, text, log), it appears from examples that a string is always returned.
+	 * Therefore, let Jackson handle as a string and convert into time series float data value,
+	 * or use the flags for text.
 	 */
 	private String value = "";
 

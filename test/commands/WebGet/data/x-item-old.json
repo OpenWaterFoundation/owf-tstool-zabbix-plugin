@@ -1,0 +1,13 @@
+{
+    "jsonrpc": "2.0",
+    "method": "item.get",
+    "params": {
+        "output": "extend"
+        "hostids": [
+           "UD-NS518",
+           "ud-ns518b"
+        ]
+    },
+    "id": 1,
+    "auth": "INSERT_API_TOKEN"
+}

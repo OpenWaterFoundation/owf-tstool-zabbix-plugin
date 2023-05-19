@@ -1,0 +1,63 @@
+StartLog(LogFile="results/read-objects.tstool.log")
+#
+# Read Zabbix objects to understand the API:
+# - this uses the old authentication approach ('auth' in JSON), Zabbix 5.4
+# - note that all reads use GET (using POST results in errors)
+#
+# Set the API key from the datastore properties so it can be used below.
+SetPropertyFromDataStore(DataStore="TriLynxZabbix",DataStoreProperty="ApiToken",PropertyName="ZabbixApiToken")
+SetPropertyFromDataStore(DataStore="TriLynxZabbix",DataStoreProperty="SystemLogin",PropertyName="ZabbixUser")
+SetPropertyFromDataStore(DataStore="TriLynxZabbix",DataStoreProperty="SystemPassword",PropertyName="ZabbixPassword")
+#
+# User login:
+# - get the Zabbix user and password from the datastore properties
+# - create a temporary file with the login payload request
+# - results are at the top level
+# - read the JSON into an object and extract the authorization token
+TextEdit(InputFile="data\userlogin-old.json",SearchFor="INSERT_USER_HERE",ReplaceWith="${ZabbixUser}",OutputFile="${TempDir}/userlogin-old.json")
+TextEdit(InputFile="${TempDir}/userlogin-old.json",SearchFor="INSERT_PASSWORD_HERE",ReplaceWith="${ZabbixPassword}",OutputFile="${TempDir}/userlogin-old.json")
+WebGet(URI="https://zabbix-web.trilynx-novastar.systems/zabbix/api_jsonrpc.php",EncodeURI="False",PayloadFile="${TempDir}/userlogin-old.json",HttpHeaders="Content-Type:application/json-rpc",LocalFile="results/UserLogin.json")
+NewObject(ObjectID="UserLoginObject",InputFile="results/UserLogin.json")
+SetPropertyFromObject(ObjectID="UserLoginObject",ObjectProperty="result",PropertyName="ZabbixApiToken",PropertyType="String")
+#
+# Version:
+# - results are at the top level
+# WebGet(URI="https://zabbix-web.trilynx-novastar.systems/zabbix/api_jsonrpc.php",EncodeURI="False",PayloadFile="data\version.json",HttpHeaders="Content-Type:application/json-rpc,Authorization:Bearer ${ZabbixApiToken}",LocalFile="results/ApiVersion.json")
+WebGet(URI="https://zabbix-web.trilynx-novastar.systems/zabbix/api_jsonrpc.php",EncodeURI="False",PayloadFile="data\version.json",HttpHeaders="Content-Type:application/json-rpc",LocalFile="results/ApiVersion.json")
+NewObject(ObjectID="ApiVersion",InputFile="results\ApiVersion.json")
+#
+# Host Group:
+# - results are in an array
+TextEdit(InputFile="data\hostgroup-old.json",SearchFor="INSERT_API_TOKEN",ReplaceWith="${ZabbixApiToken}",OutputFile="results/hostgroup-old.json")
+WebGet(URI="https://zabbix-web.trilynx-novastar.systems/zabbix/api_jsonrpc.php",EncodeURI="False",PayloadFile="results\hostgroup-old.json",HttpHeaders="Content-Type:application/json-rpc",LocalFile="results/HostGroup.json")
+NewObject(ObjectID="HostGroup",InputFile="results\HostGroup.json")
+#
+# Hosts (all):
+# - read all the hosts
+# - results are in an array
+TextEdit(InputFile="data\host-all-old.json",SearchFor="INSERT_API_TOKEN",ReplaceWith="${ZabbixApiToken}",OutputFile="results/host-all-old.json")
+WebGet(URI="https://zabbix-web.trilynx-novastar.systems/zabbix/api_jsonrpc.php",EncodeURI="False",PayloadFile="results\host-all-old.json",HttpHeaders="Content-Type:application/json-rpc",LocalFile="results/Host-all.json")
+NewObject(ObjectID="Host_All",InputFile="results\Host-all.json")
+#
+# Hosts (name list):
+# - read hosts given a list of host.name
+# - results are in an array
+TextEdit(InputFile="data\host-names-old.json",SearchFor="INSERT_API_TOKEN",ReplaceWith="${ZabbixApiToken}",OutputFile="results/host-names-old.json")
+WebGet(URI="https://zabbix-web.trilynx-novastar.systems/zabbix/api_jsonrpc.php",EncodeURI="False",PayloadFile="results\host-names-old.json",HttpHeaders="Content-Type:application/json-rpc",LocalFile="results/Host-names.json")
+NewObject(ObjectID="Host_Names",InputFile="results\Host-names.json")
+#
+# Items:
+# - results are in an array
+# - apparently must specify a filter such as hostids (can't request all items?)
+TextEdit(InputFile="data\item-hostids-old.json",SearchFor="INSERT_API_TOKEN",ReplaceWith="${ZabbixApiToken}",OutputFile="results/item-hostids-old.json")
+SetDebugLevel(LogFileLevel="1")
+WebGet(URI="https://zabbix-web.trilynx-novastar.systems/zabbix/api_jsonrpc.php",EncodeURI="False",PayloadFile="results\item-hostids-old.json",HttpHeaders="Content-Type:application/json-rpc",LocalFile="results/Item-hostids.json")
+SetDebugLevel(ScreenLevel="0",LogFileLevel="0")
+NewObject(ObjectID="Item-hostids",InputFile="results\Item-hostids.json")
+#
+# History:
+# - results are in an array
+# - must specify a filter such as itemids
+TextEdit(InputFile="data\history-old.json",SearchFor="INSERT_API_TOKEN",ReplaceWith="${ZabbixApiToken}",OutputFile="results/history-old.json")
+WebGet(URI="https://zabbix-web.trilynx-novastar.systems/zabbix/api_jsonrpc.php",EncodeURI="False",PayloadFile="results\history-old.json",HttpHeaders="Content-Type:application/json-rpc",LocalFile="results/History.json")
+NewObject(ObjectID="History",InputFile="results\History.json")

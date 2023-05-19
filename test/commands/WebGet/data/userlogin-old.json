@@ -1,0 +1,10 @@
+{
+    "jsonrpc": "2.0",
+    "method": "user.login",
+    "params": {
+        "user": "INSERT_USER_HERE",
+        "password": "INSERT_PASSWORD_HERE"
+    },
+    "id": 1,
+    "auth": null
+}

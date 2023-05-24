@@ -1,0 +1,19 @@
+# Simple example to graph important system resources.
+#
+# CPU Utilization
+ReadZabbix(DataStore="TriLynxZabbix",DataType="CPU: utilization-Avg",Interval="Hour",DataSource="Clients/AZ-County-Yavapai",LocId="ypnovastar5a")
+ReadZabbix(DataStore="TriLynxZabbix",DataType="CPU: utilization-Min",Interval="Hour",DataSource="Clients/AZ-County-Yavapai",LocId="ypnovastar5a")
+ReadZabbix(DataStore="TriLynxZabbix",DataType="CPU: utilization-Max",Interval="Hour",DataSource="Clients/AZ-County-Yavapai",LocId="ypnovastar5a")
+ReadZabbix(DataStore="TriLynxZabbix",DataType="CPU: utilization",Interval="IrregSecond",DataSource="Clients/AZ-County-Yavapai",LocId="ypnovastar5a")
+#
+# Process graph.
+ProcessTSProduct(TSProductFile="example1-cpu.tsp")
+#
+# Memory Utilization
+ReadZabbix(DataStore="TriLynxZabbix",DataType="Memory: Utilization-Avg",Interval="Hour",DataSource="Clients/AZ-County-Yavapai",LocId="ypnovastar5a")
+ReadZabbix(DataStore="TriLynxZabbix",DataType="Memory: Utilization-Min",Interval="Hour",DataSource="Clients/AZ-County-Yavapai",LocId="ypnovastar5a")
+ReadZabbix(DataStore="TriLynxZabbix",DataType="Memory: Utilization-Max",Interval="Hour",DataSource="Clients/AZ-County-Yavapai",LocId="ypnovastar5a")
+ReadZabbix(DataStore="TriLynxZabbix",DataType="Memory: Utilization",Interval="IrregSecond",DataSource="Clients/AZ-County-Yavapai",LocId="ypnovastar5a")
+#
+# Process graph.
+ProcessTSProduct(TSProductFile="example1-memory.tsp")

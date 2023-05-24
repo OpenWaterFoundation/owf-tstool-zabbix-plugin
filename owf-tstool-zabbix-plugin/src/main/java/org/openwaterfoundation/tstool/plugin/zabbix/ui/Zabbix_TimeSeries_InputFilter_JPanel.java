@@ -69,6 +69,65 @@ public class Zabbix_TimeSeries_InputFilter_JPanel extends InputFilter_JPanel {
 	}
 
 	/**
+ 	* Check the input filter for appropriate combination of choices.
+ 	* These checks can be performed in the ReadZabbix command and the main TSTool UI,
+ 	* both of which use this class.
+ 	* The data type and interval are not checked
+ 	* @param displayWarning If true, display a warning dialog if there are errors in the input.
+ 	* If false, do not display a warning, in which case the calling code should generally display a warning and optionally
+ 	* also perform other checks by overriding this method.
+ 	* @return null if no issues or a string that indicates issues,
+ 	* can use \n for line breaks and put at the front of the string.
+ 	*/
+	@Override
+	public String checkInputFilters ( boolean displayWarning ) {
+		String dataType = null;
+		String dataInterval = null;
+		return this.checkInputFilters ( dataType, dataInterval, displayWarning );
+	}
+
+	/**
+ 	* Check the input filter for appropriate combination of choices.
+ 	* These checks can be performed in the ReadZabbix command and the main TSTool UI,
+ 	* both of which use this class.
+ 	* @param dataType that is selected
+ 	* @param dataInterval that is selected
+ 	* @param displayWarning If true, display a warning dialog if there are errors in the input.
+ 	* If false, do not display a warning, in which case the calling code should generally display a warning and optionally
+ 	* also perform other checks by overriding this method.
+ 	* @return null if no issues or a string that indicates issues,
+ 	* can use \n for line breaks and put at the front of the string.
+ 	*/
+	public String checkInputFilters ( String dataType, String dataInterval, boolean displayWarning ) {
+		// Use the parent class method to check basic input types based on data types:
+		// - will return empty string if no issues
+		String warning = super.checkInputFilters(displayWarning);
+		// Perform specific checks.
+		String warning2 = "";
+
+		// Check that at least one limiting filter is specified to constrain the size of the viewed time series catalog:
+		// - otherwise the catalog can be very large (e.g., ~100,000 objects)
+		int numInputFilters = 0;
+		if( (dataType != null) && !dataType.equals("*") ) {
+			++numInputFilters;
+		}
+		if ( hasInput() ) {
+			// At least one input filter is specified.
+			++numInputFilters;
+		}
+		if( numInputFilters == 0 ) {
+			warning2 += "\nThe data type and/or one of the 'Where' filters must be specified to limit the size of the query.";
+		}
+
+		if ( !warning2.isEmpty() ) {
+			// Have non-empty specific warnings so append specific warnings.
+			warning += warning2;
+		}
+		// Return the general warnings or the appended results.
+		return warning;
+	}
+
+	/**
 	Set the filter data.  This method is called at setup and when refreshing the list with a new subject type.
 	*/
 	public void setFilters ( int numFilterGroups ) {

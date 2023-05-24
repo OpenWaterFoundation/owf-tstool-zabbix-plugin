@@ -1,0 +1,10 @@
+# Example of reading CPU utilization for trend and history data:
+# - MHFD system
+# - primary and backup nodes
+ud-ns518b.Clients/CO-District-MHFD.'CPU: utilization-Avg'.Hour~TriLynxZabbix
+UD-NS518.Clients/CO-District-MHFD.'CPU: utilization-Avg'.Hour~TriLynxZabbix
+ud-ns518b.Clients/CO-District-MHFD.'CPU: utilization'.IrregSecond~TriLynxZabbix
+UD-NS518.Clients/CO-District-MHFD.'CPU: utilization'.IrregSecond~TriLynxZabbix
+#
+# Create a graph.
+ProcessTSProduct(TSProductFile="Test-MHFD-cpu-utilization.tsp")

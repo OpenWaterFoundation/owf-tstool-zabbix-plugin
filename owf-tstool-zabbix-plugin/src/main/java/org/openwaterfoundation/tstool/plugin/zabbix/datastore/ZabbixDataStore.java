@@ -42,6 +42,7 @@ import org.openwaterfoundation.tstool.plugin.zabbix.dao.Host;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.HostGroup;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.Item;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.TimeSeriesCatalog;
+import org.openwaterfoundation.tstool.plugin.zabbix.dao.Trend;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.UserLogin;
 import org.openwaterfoundation.tstool.plugin.zabbix.dto.JacksonToolkit;
 import org.openwaterfoundation.tstool.plugin.zabbix.ui.Zabbix_TimeSeries_CellRenderer;
@@ -63,7 +64,7 @@ import RTi.Util.Message.Message;
 import RTi.Util.String.EmbeddedPropertiesString;
 import RTi.Util.String.StringUtil;
 import RTi.Util.Time.DateTime;
-import RTi.Util.Time.TimeInterval;
+import RTi.Util.Time.InvalidTimeIntervalException;
 import RTi.Util.Time.TimeUtil;
 import riverside.datastore.AbstractWebServiceDataStore;
 import riverside.datastore.DataStoreRequirementChecker;
@@ -87,9 +88,14 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 	private Map<String,Object> pluginProperties = new LinkedHashMap<>();
 
 	/**
-	 * Global time series catalog, used to streamline creating lists for UI choices.
+	 * Global history time series catalog, used to streamline creating lists for UI choices.
 	 */
-	private List<TimeSeriesCatalog> globalTscatalogList = new ArrayList<>();
+	private List<TimeSeriesCatalog> globalHistoryTscatalogList = new ArrayList<>();
+
+	/**
+	 * Global trend time series catalog, used to streamline creating lists for UI choices.
+	 */
+	private List<TimeSeriesCatalog> globalTrendTscatalogList = new ArrayList<>();
 
 	/**
 	 * Global host group list.
@@ -103,8 +109,15 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 
 	/**
 	 * Global item list.
+	 * CURRENTLY NOT POPULATED.
 	 */
 	private List<Item> globalItemList = new ArrayList<>();
+
+	/**
+	 * Global item list.
+	 * CURRENTLY NOT POPULATED.
+	 */
+	private List<String> globalItemNameList = new ArrayList<>();
 
 	/**
 	 * Global debug option for datastore, used for development and troubleshooting.
@@ -496,6 +509,13 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 	}
 
 	/**
+	 * Return the list of item names determined from the TimeSeriesCatalog at initialization.
+	 */
+	public List<String> getItemNames() {
+		return this.globalItemNameList;
+	}
+
+	/**
 	 * Get the "params" host filter JSON for a list of Host.
 	 *  "filter": {
      *      "host": [
@@ -641,18 +661,18 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 	}
 
 	/**
-	 * Return the list of time series catalog.
+	 * Return the list of history time series catalog.
 	 * @param readData if false, return the global cached data, if true read the data and reset in he cache
 	 */
-	public List<TimeSeriesCatalog> getTimeSeriesCatalog(boolean readData) {
+	public List<TimeSeriesCatalog> getHistoryTimeSeriesCatalog(boolean readData) {
 		if ( readData ) {
 			String tsid = null;
 			String dataTypeReq = null;
 			String dataIntervalReq = null;
     		InputFilter_JPanel ifp = null;
-			this.globalTscatalogList = readTimeSeriesCatalog(tsid, dataTypeReq, dataIntervalReq, ifp );
+			this.globalHistoryTscatalogList = readTimeSeriesCatalog(tsid, dataTypeReq, dataIntervalReq, ifp );
 		}
-		return this.globalTscatalogList;
+		return this.globalHistoryTscatalogList;
 	}
 
 	/**
@@ -671,7 +691,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 	/**
 	 * This version is required by TSTool UI.
 	 * Return the list of time series data interval strings.
-	 * Interval strings match TSTool conventions such as NewTimeSeries command, which uses "1Hour" rather than "1hour".
+	 * Interval strings match TSTool conventions such as NewTimeSeries command.
 	 * This should result from calls like:  TimeInterval.getName(TimeInterval.HOUR, 0)
 	 * @param dataType data type string to filter the list of data intervals.
 	 * If null, blank, or "*" the data type is not considered when determining the list of data intervals.
@@ -681,28 +701,32 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 		//String routine = getClass().getSimpleName() + ".getTimeSeriesDataIntervalStrings";
 		List<String> dataIntervals = new ArrayList<>();
 
-		// Currently only IrregSecond since not sure how timesteps align and use * wildcards.
-		dataIntervals.add("IrregSecond");
+		// Use IrregSecond for history, event, and problem time series and Hour for trend time series.
+		if ( (dataType == null) || ((dataType != null) && dataType.equals("*")) ) {
+			// Add all intervals.
+			dataIntervals.add("IrregSecond");
+			dataIntervals.add("Hour");
 
-		// Sort the intervals:
-		// - TODO smalers need to sort by time
-		Collections.sort(dataIntervals,String.CASE_INSENSITIVE_ORDER);
+			if ( includeWildcards ) {
+				// Always allow querying list of time series for all intervals:
+				// - always add so that people can get a full list
 
-		/*
-		if ( includeWildcards ) {
-			// Always allow querying list of time series for all intervals:
-			// - always add so that people can get a full list
-			// - adding at top makes it easy to explore data without having to scroll to the end
-
-			dataIntervals.add("*");
-			if ( dataIntervals.size() > 1 ) {
-				// Also add at the beginning to simplify selections:
-				// - could check for a small number like 5 but there should always be a few
-				dataIntervals.add(0,"*");
+				dataIntervals.add("*");
+				if ( dataIntervals.size() > 1 ) {
+					// Also add at the beginning to simplify selections:
+					// - could check for a small number like 5 but there should always be a few
+					dataIntervals.add(0,"*");
+				}
 			}
 		}
-		*/
-
+		else if ( (dataType != null) &&
+			(dataType.endsWith("-Avg") || dataType.endsWith("Max") || dataType.endsWith("Min")) ) {
+			// Trend time series.
+			dataIntervals.add("Hour");
+		}
+		else {
+			dataIntervals.add("IrregSecond");
+		}
 		return dataIntervals;
 	}
 
@@ -720,7 +744,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 
 	/**
 	 * Return the list of time series data type strings.
-	 * These strings are the same as the parameter type list 'parametertype_name'.
+	 * These are the same as Item names.
 	 * @param dataInterval the data interval to filter data types
 	 * @param includeWildcards whether "*" should be included at the start and end of the list
 	 */
@@ -730,14 +754,21 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 		// Currently the data types are a static list, not determined from an API call.
 		List<String> dataTypes = new ArrayList<>();
 
-		/*
-		for ( Variable variable : this.variableList ) {
-			dataTypes.add( variable.getName() );
+		boolean addTrendTypes = true;
+		for ( String itemName : this.globalItemNameList ) {
+			// Item names are for history time series.
+			dataTypes.add( itemName );
+			if ( addTrendTypes ) {
+				// Add data types for trend time series:
+				// - use the Zabbix statistics as is to avoid confusion
+				dataTypes.add( itemName + "-Avg");
+				dataTypes.add( itemName + "-Max");
+				dataTypes.add( itemName + "-Min");
+			}
 		}
 
 		// Sort the names.
 		Collections.sort(dataTypes, String.CASE_INSENSITIVE_ORDER);
-		*/
 
 		if ( includeWildcards ) {
 			// Add wildcard at the front and end - allows querying all data types for the location:
@@ -870,64 +901,72 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 		}
 		*/
 
-		// The time series catalog COULD be used more throughout TSTool, such as when reading time series.
-		// However, the initial implementation of readTimeSeries reads the list each time.
-		// The cached list is used to create choices for the UI in order to ensure fast performance.
-		// Therefore the slowdown is only at TSTool startup.
-		// TODO smalers 2023-05-18 the following fails:
-		// - is there a limit on how many records can be returned?
-		// - is there a host or item that causes an issue?
+		// Read the global list of history time series:
+		// - used to look up history time series when reading
+		// - used to create choices for the UI
+		// - TODO smalers need to create a data pyramid to streamline performance
 		try {
 			String tsid = null;
     		String dataTypeReq = null;
     		String dataIntervalReq = null;
     		InputFilter_JPanel ifp = null;
     		// Read the catalog for all time series.
-			this.globalTscatalogList = readTimeSeriesCatalog(tsid, dataTypeReq, dataIntervalReq, ifp );
-			Message.printStatus(2, routine, "Read " + this.globalTscatalogList.size() + " time series catalog." );
+			this.globalHistoryTscatalogList = readTimeSeriesCatalog(tsid, dataTypeReq, dataIntervalReq, ifp );
+			Message.printStatus(2, routine, "Read " + this.globalHistoryTscatalogList.size() + " history time series catalog." );
 
-			// Loop through and create the lists of location ID and time series short name used in the ReadZabbix command editor.
+			// Loop through the history time series catalog and create other global data:
+			// - these are used in the TSTool UI and commands to improve performance
+			// - create unique item name
+			// - the lists are unique across all the data but may not be used for each host, etc/
 
-			/*
-			String stationNo;
-			String tsShortName;
-			this.locIdList = new ArrayList<>();
-			this.tsShortNameList = new ArrayList<>();
+			this.globalItemNameList = new ArrayList<>();
+			this.globalTrendTscatalogList = new ArrayList<>();
+			String itemName = null;
 			boolean found;
-			for ( TimeSeriesCatalog tscatalog : this.tscatalogList ) {
-				stationNo = tscatalog.getStationNo();
-				tsShortName = tscatalog.getTsShortName();
+			for ( TimeSeriesCatalog tscatalog : this.globalHistoryTscatalogList ) {
+				itemName = tscatalog.getItemName();
 
 				found = false;
-				for ( String stationNo2 : this.locIdList ) {
-					if ( stationNo2.equals(stationNo) ) {
+				for ( String itemName2 : this.globalItemNameList ) {
+					if ( itemName2.equals(itemName) ) {
 						found = true;
 						break;
 					}
 				}
 				if ( !found ) {
-					this.locIdList.add(stationNo);
+					this.globalItemNameList.add(itemName);
 				}
+				
+				// Create the trend time series catalog:
+				// - copy the history catalog since most of the data will be the same
+				// - modify the data type to include the statistic at the end
+				// - set the interval to 'Hour'
 
-				found = false;
-				for ( String tsShortName2 : this.tsShortNameList ) {
-					if ( tsShortName2.equals(tsShortName) ) {
-						found = true;
-						break;
-					}
-				}
-				if ( !found ) {
-					this.tsShortNameList.add(tsShortName);
-				}
+				// 'Avg' statistic.
+				TimeSeriesCatalog tscatalog2 = new TimeSeriesCatalog(tscatalog);
+				tscatalog2.setDataType(tscatalog.getItemName() + "-Avg");
+				tscatalog2.setDataInterval("Hour");
+				this.globalTrendTscatalogList.add(tscatalog2);
+				// 'Min' statistic.
+				tscatalog2 = new TimeSeriesCatalog(tscatalog);
+				tscatalog2.setDataType(tscatalog.getItemName() + "-Min");
+				tscatalog2.setDataInterval("Hour");
+				this.globalTrendTscatalogList.add(tscatalog2);
+				// 'Max' statistic.
+				tscatalog2 = new TimeSeriesCatalog(tscatalog);
+				tscatalog2.setDataType(tscatalog.getItemName() + "-Max");
+				tscatalog2.setDataInterval("Hour");
+				this.globalTrendTscatalogList.add(tscatalog2);
 			}
 
-			// Sort the lists.
-			Collections.sort(this.locIdList,String.CASE_INSENSITIVE_ORDER);
-			Collections.sort(this.tsShortNameList,String.CASE_INSENSITIVE_ORDER);
-			*/
+			Message.printStatus(2, routine, "Read " + this.globalTrendTscatalogList.size()
+				+ " trend time series catalog (3x history catalog)." );
+
+			// Sort the simple lists.
+			Collections.sort(this.globalItemNameList,String.CASE_INSENSITIVE_ORDER);
 		}
 		catch ( Exception e ) {
-			Message.printWarning(3, routine, "Error reading global time series catalog list (" + e + ")");
+			Message.printWarning(3, routine, "Error reading global history and trend time series catalog lists (" + e + ")");
 			Message.printWarning(3, routine, e );
 		}
 	}
@@ -1066,11 +1105,18 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
     private List<Item> readItemList ( List<Host> hostList ) {
 		String routine = getClass().getSimpleName() + ".readItemList";
 		String requestUrl = getServiceRootURI().toString();
+		String sortParam = "";
+		if ( hostList.size() == 1 ) {
+			// Sort by item name:
+			// - TODO smalers 2023-05-22 implement a tree for storage to increase optimization and multi-level sort
+			sortParam = "\"sortfield\": \"name\",";
+		}
 		String requestData =
 			"{"
 				+ "\"jsonrpc\": \"2.0\","
 				+ "\"method\": \"item.get\","
 				+ "\"params\": {"
+					+ sortParam
 					+ getParamHostIds(false, hostList)
 				+ "},"
 				+ "\"id\": 1"
@@ -1129,20 +1175,35 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
      * @param readProperties additional properties to control the query:
      * <ul>
      * <li> "Debug" - if true, turn on debug for the query</li>
+     * <li> "ShiftTrendToIntervalEnd" - if true, shift trend clock by 3600 seconds to the end of the interval
+     *      (the default is at the start of the interval)</li>
      * </ul>
      * @return the time series or null if not read
      */
     public TS readTimeSeries ( String tsidReq, DateTime readStart, DateTime readEnd,
     	boolean readData, HashMap<String,Object> readProperties ) throws Exception {
     	String routine = getClass().getSimpleName() + ".readTimeSeries";
+    	
+    	// Set properties for specific functionality.
+    	// TODO need to enable debug as temporary setting in this function
+    	boolean shiftTrendToIntervalEnd = false;
+
+    	if ( readProperties != null ) {
+    		Object propObject = readProperties.get ( "Debug" );
+
+    		propObject = readProperties.get ( "ShiftTrendToIntervalEnd" );
+    		if ( propObject != null ) {
+    			String propString = (String)propObject;
+    			if ( propString.equalsIgnoreCase("true") ) {
+    				shiftTrendToIntervalEnd = true;
+    			}
+    		}
+    	}
 
     	// Create a time series identifier for the requested TSID:
     	// - the actual output may be set to a different identifier based on the above properties
     	// - also save interval base and multiplier for the original request
     	TSIdent tsidentReq = TSIdent.parseIdentifier(tsidReq);
-   		int intervalBaseReq = tsidentReq.getIntervalBase();
-   		int intervalMultReq = tsidentReq.getIntervalMult();
-   		boolean isRegularIntervalReq = TimeInterval.isRegularInterval(intervalBaseReq);
 
     	// Up front, check for invalid request and throw exceptions:
    		// - some cases are OK as long as IrregularInterval was specified in ReadKiWIS
@@ -1160,11 +1221,51 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
  		// - the dataSource corresponds to the hostgroup.name
  		String dataSource = tsidentReq.getSource();
  		dataSource = dataSource.replace("'", "");
+ 		// Get the data interval:
+ 		// - for history should be 'IrregSecond'
+ 		// - for trend should be 'Hour'
+ 		String dataInterval = tsidentReq.getInterval();
  		// Get the data type:
  		// - remove surrounding quotes
  		// - the dataType corresponds to the item.name
  		String dataType = tsidentReq.getType();
  		dataType = dataType.replace("'", "");
+ 		// If the dataType ends in '-Avg', '-Max', '-Min', read the trend time series:
+ 		// - default is to read history
+ 		boolean readHistory = true;
+ 		boolean readTrend = false;
+ 		// Which statistic to read:
+ 		// -1 = Min
+ 		// 0 = Avg
+ 		// 1 = Max
+ 		int valueStat = -999;
+ 		if ( dataType.endsWith("-Avg") || dataType.endsWith("-Min") || dataType.endsWith("-Max") ) {
+ 			// Trend time series.
+ 			readTrend = true;
+ 			readHistory = false;
+ 			if ( !dataInterval.equalsIgnoreCase("Hour") ) {
+ 				throw new InvalidTimeIntervalException (
+ 					"Requested time series \"" + tsidReq + "\" is trend but interval is not Hour.");
+ 			}
+ 			if ( dataType.endsWith("-Avg") ) {
+ 				valueStat = -1;
+ 			}
+ 			else if ( dataType.endsWith("-Min") ) {
+ 				valueStat = 0;
+ 			}
+ 			else if ( dataType.endsWith("-Max") ) {
+ 				valueStat = 1;
+ 			}
+ 		}
+ 		else {
+ 			// History time series.
+ 			readTrend = false;
+ 			readHistory = true;
+ 			if ( !dataInterval.equalsIgnoreCase("IrregSecond") ) {
+ 				throw new InvalidTimeIntervalException (
+ 					"Requested time series \"" + tsidReq + "\" is history but interval is not IrregSecond.");
+ 			}
+ 		}
 
  		// Create the time series.
  		TS ts = null;
@@ -1176,7 +1277,8 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
     		throw new RuntimeException ( e );
     	}
 
-    	// Get the matching TimeSeriesCatalog.
+    	// Get the matching TimeSeriesCatalog by matching the 'tsidReq':
+    	// - in this case the TSID controls so set the other filters to null
     	String dataTypeReq = null;
     	String dataIntervalReq = null;
     	InputFilter_JPanel ifp = null;
@@ -1270,50 +1372,164 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 					timeFrom = readEndGmt.toEpochSecond();
 				}
     		}
-    		List<History> historyList = readHistoryList ( tscatalog.getItemId(), timeFrom, timeTill );
-    		Message.printStatus(2,routine,"Read " + historyList.size() + " history records for timefrom="
-    			+ timeFrom + " timetill=" + timeTill + ".");
-    		// If any data were returned, add to the time series.
-    		double value;
-    		History history = null;
-    		DateTime dt = null;
-    		if ( historyList.size() > 0 ) {
-    			// Set the period:
-    			// - note that 'clock' is seconds but TimeUtil.fromUnixTime() accepts ms.
-    			long clockStart = Long.parseLong(historyList.get(0).getClock());
-    			DateTime dataStart = TimeUtil.fromUnixTime(clockStart*1000, null);
-    			long clockEnd = Long.parseLong(historyList.get(historyList.size() - 1).getClock());
-    			DateTime dataEnd = TimeUtil.fromUnixTime(clockEnd*1000, null);
-    			ts.setDate1(dataStart);
-    			ts.setDate1Original(dataStart);
-    			ts.setDate2(dataEnd);
-    			ts.setDate2Original(dataEnd);
-    			ZonedDateTime zonedDateTime = null;
-    			for ( int i = 0; i < historyList.size(); i++ ) {
-    				history = historyList.get(i);
-    				long clock = Long.parseLong(history.getClock());
-    				value = Double.parseDouble(history.getValue());
-   					if ( hostZoneId == null ) {
-   						// Using GMT so can directly work with DateTime.
-   						if ( i == 0 ) {
-   							// Create the DateTime the first time.
-   							dt = TimeUtil.fromUnixTime(clock*1000, null);
-   							dt.setPrecision(DateTime.PRECISION_SECOND);
+    		if ( readHistory ) {
+    			// Reading the history data into an irregular interval time series:
+    			// - don't need to allocate memory
+    			List<History> historyList = readHistoryList ( tscatalog.getItemId(), timeFrom, timeTill );
+    			Message.printStatus(2,routine,"Read " + historyList.size() + " history records for timefrom="
+    				+ timeFrom + " timetill=" + timeTill + ".");
+    			// If any data were returned, add to the time series.
+    			double value;
+    			History history = null;
+    			DateTime dt = null;
+    			if ( historyList.size() > 0 ) {
+    				// Set the period:
+    				// - note that 'clock' is seconds but TimeUtil.fromUnixTime() accepts ms.
+    				DateTime dataStart = null;
+    				DateTime dataEnd = null;
+    				ZonedDateTime zonedDateTime = null;
+    				long clockStart = Long.parseLong(historyList.get(0).getClock());
+    				long clockEnd = Long.parseLong(historyList.get(historyList.size() - 1).getClock());
+					if ( hostZoneId == null ) {
+						// Adjust the time zone.
+						dataStart = TimeUtil.fromUnixTime(clockStart*1000, null);
+						dataEnd = TimeUtil.fromUnixTime(clockEnd*1000, null);
+					}
+					else {
+    					zonedDateTime = Instant.ofEpochMilli(clockStart*1000).atZone(hostZoneId);
+   						dataStart = new DateTime(zonedDateTime, DateTime.PRECISION_SECOND, hostZoneId.toString());
+    					zonedDateTime = Instant.ofEpochMilli(clockEnd*1000).atZone(hostZoneId);
+   						dataEnd = new DateTime(zonedDateTime, DateTime.PRECISION_SECOND, hostZoneId.toString());
+					}
+ 					dataStart.setPrecision(DateTime.PRECISION_SECOND);
+ 					dataEnd.setPrecision(DateTime.PRECISION_SECOND);
+    				Message.printStatus(2, routine, "Setting period to " + dataStart + " to " + dataEnd );
+    				ts.setDate1(dataStart);
+    				ts.setDate1Original(dataStart);
+    				ts.setDate2(dataEnd);
+    				ts.setDate2Original(dataEnd);
+    				for ( int i = 0; i < historyList.size(); i++ ) {
+    					history = historyList.get(i);
+    					long clock = Long.parseLong(history.getClock());
+    					value = Double.parseDouble(history.getValue());
+   						if ( hostZoneId == null ) {
+   							// Using GMT so can directly work with DateTime.
+   							if ( i == 0 ) {
+   								// Create the DateTime the first time.
+   								dt = TimeUtil.fromUnixTime(clock*1000, null);
+   								dt.setPrecision(DateTime.PRECISION_SECOND);
+   							}
+   							else {
+   								// Reuse the same DateTime.
+   								TimeUtil.fromUnixTime(clock*1000, dt);
+   							}
    						}
    						else {
-   							// Reuse the same DateTime.
-   							TimeUtil.fromUnixTime(clock*1000, dt);
-   						}
-   					}
-   					else {
-    					// Host time zone is specified (e.g., "America/Denver"):
-    					// - the legacy DateTime.shiftTimeZone() does not yet handle new java.time
-    					// - therefore use ZonedDateTime to convert to the desired time zone.
-   						// - this is slower because a new DateTime instance is created for each value
-    					zonedDateTime = Instant.ofEpochMilli(clock*1000).atZone(hostZoneId);
-    					dt = new DateTime(zonedDateTime, DateTime.PRECISION_SECOND, hostZoneId.toString());
+    						// Host time zone is specified (e.g., "America/Denver"):
+    						// - the legacy DateTime.shiftTimeZone() does not yet handle new java.time
+    						// - therefore use ZonedDateTime to convert to the desired time zone.
+   							// - this is slower because a new DateTime instance is created for each value
+    						zonedDateTime = Instant.ofEpochMilli(clock*1000).atZone(hostZoneId);
+   							dt = new DateTime(zonedDateTime, DateTime.PRECISION_SECOND, hostZoneId.toString());
+    					}
+    					ts.setDataValue(dt, value);
     				}
-    				ts.setDataValue(dt, value);
+    			}
+    		}
+    		else if ( readTrend ) {
+    			// Reading the history data into an irregular interval time series:
+    			// - allocate based on the records that are returned
+    			List<Trend> trendList = readTrendList ( tscatalog.getItemId(), timeFrom, timeTill );
+    			Message.printStatus(2,routine,"Read " + trendList.size() + " trend records for timefrom="
+    				+ timeFrom + " timetill=" + timeTill + ".");
+    			// If any data were returned, add to the time series.
+    			double value = ts.getMissing();
+    			Trend trend = null;
+    			DateTime dt = null;
+    			if ( trendList.size() > 0 ) {
+    				// Set the period:
+    				// - note that 'clock' is seconds but TimeUtil.fromUnixTime() accepts ms.
+    				// - clock is also the start of the interval so shift by an hour to agree with TSTool conventions
+    				DateTime dataStart = null;
+    				DateTime dataEnd = null;
+    				ZonedDateTime zonedDateTime = null;
+   					long clockStart = 0;
+   					long clockEnd = 0;
+    				boolean dataIsSorted = false;
+    				if ( dataIsSorted ) {
+    					// Should be able to do this.
+    					clockStart = Long.parseLong(trendList.get(0).getClock());
+    					clockEnd = Long.parseLong(trendList.get(trendList.size() - 1).getClock());
+    				}
+    				else {
+    					// However, trend data are apparently not sorted by clock so have to determine the clock limits.
+    					// See:  https://support.zabbix.com/browse/ZBXNEXT-3974
+    					long [] clockLimits = Trend.getClockLimits(trendList);
+    					clockStart = clockLimits[0];
+    					clockEnd = clockLimits[1];
+    				}
+    				if ( shiftTrendToIntervalEnd ) {
+    					// Zabbix returns timestamp at interval start.  Shift to interval end consistent with TSTool.
+    					clockStart += 3600;
+    					clockEnd += 3600;
+    				}
+					if ( hostZoneId == null ) {
+						// Adjust the time zone.
+						dataStart = TimeUtil.fromUnixTime(clockStart*1000, null);
+						dataEnd = TimeUtil.fromUnixTime(clockEnd*1000, null);
+					}
+					else {
+    					zonedDateTime = Instant.ofEpochMilli(clockStart*1000).atZone(hostZoneId);
+   						dataStart = new DateTime(zonedDateTime, DateTime.PRECISION_SECOND, hostZoneId.toString());
+    					zonedDateTime = Instant.ofEpochMilli(clockEnd*1000).atZone(hostZoneId);
+   						dataEnd = new DateTime(zonedDateTime, DateTime.PRECISION_SECOND, hostZoneId.toString());
+					}
+ 					dataStart.setPrecision(DateTime.PRECISION_SECOND);
+ 					dataEnd.setPrecision(DateTime.PRECISION_SECOND);
+    				Message.printStatus(2, routine, "Setting period to " + dataStart + " to " + dataEnd );
+    				ts.setDate1(dataStart);
+    				ts.setDate1Original(dataStart);
+    				ts.setDate2(dataEnd);
+    				ts.setDate2Original(dataEnd);
+    				ts.allocateDataSpace();
+    				for ( int i = 0; i < trendList.size(); i++ ) {
+    					trend = trendList.get(i);
+    					long clock = Long.parseLong(trend.getClock());
+    					if ( shiftTrendToIntervalEnd ) {
+    						// Zabbix returns timestamp at interval start.  Shift to interval end consistent with TSTool.
+    						clock += 3600;
+    					}
+    					if ( valueStat < 0 ) {
+    						value = Double.parseDouble(trend.getValueMin());
+    					}
+    					else if ( valueStat == 0 ) {
+    						value = Double.parseDouble(trend.getValueAvg());
+    					}
+    					else if ( valueStat == 1 ) {
+    						value = Double.parseDouble(trend.getValueMax());
+    					}
+   						if ( hostZoneId == null ) {
+   							// Using GMT so can directly work with DateTime.
+   							if ( i == 0 ) {
+   								// Create the DateTime the first time.
+   								dt = TimeUtil.fromUnixTime(clock*1000, null);
+   								dt.setPrecision(DateTime.PRECISION_SECOND);
+   							}
+   							else {
+   								// Reuse the same DateTime.
+   								TimeUtil.fromUnixTime(clock*1000, dt);
+   							}
+   						}
+   						else {
+    						// Host time zone is specified (e.g., "America/Denver"):
+    						// - the legacy DateTime.shiftTimeZone() does not yet handle new java.time
+    						// - therefore use ZonedDateTime to convert to the desired time zone.
+   							// - this is slower because a new DateTime instance is created for each value
+    						zonedDateTime = Instant.ofEpochMilli(clock*1000).atZone(hostZoneId);
+   							dt = new DateTime(zonedDateTime, DateTime.PRECISION_SECOND, hostZoneId.toString());
+    					}
+    					ts.setDataValue(dt, value);
+    				}
     			}
     		}
     	}
@@ -1329,7 +1545,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 	 *        or null to use default of "*".
 	 * @param dataIntervalReq Requested data interval (e.g., "IrregSecond") or "*" to read all intervals,
 	 *        or null to use default of "*".
-	 * @param ifp input filter panel with "where" conditions
+	 * @param ifp input filter panel with "where" conditions, if null or all blank will not be used
 	 */
 	public List<TimeSeriesCatalog> readTimeSeriesCatalog ( String tsid, String dataTypeReq, String dataIntervalReq, InputFilter_JPanel ifp ) {
 		String routine = getClass().getSimpleName() + ".readTimeSeriesCatalog";
@@ -1344,12 +1560,17 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 		}
 		else {
 			Message.printStatus(2,routine,"  ifp=not null");
+			Message.printStatus(2,routine,"  ifp has any non-blank input=" + ifp.hasInput());
 		}
 
 		// Determine the Item list, which will each match one time series.
 		List<Item> itemList = new ArrayList<>();
 
+		// By default, use the cache to look up time series rather than doing a new TimeSeriesCatalog query.
+		boolean useCache = true;
 		if ( (tsid != null) && !tsid.isEmpty() ) {
+			Message.printStatus(2, routine, "Reading single time series \"" + tsid + "\"." );
+			// Reading a single time series catalog, for example when reading a single time series.
 			TSIdent tsident = null;
 			try {
 				tsident = TSIdent.parseIdentifier(tsid);
@@ -1368,17 +1589,58 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 			// - the dataSource corresponds to the hostgroup.name
 			String dataSource = tsident.getSource();
 			dataSource = dataSource.replace("'", "");
+			// Get the data interval:
+			// - for history should be 'IrregSecond'
+			// - for trend should be 'Hour'
+			String dataInterval = tsident.getInterval();
 			// Get the data type:
 			// - remove surrounding quotes
 			// - the dataType corresponds to the item.name
 			String dataType = tsident.getType();
 			dataType = dataType.replace("'", "");
+			// If the dataType ends in '-Avg', '-Max', '-Min', read the trend time series:
+			// - default is to read history
+			boolean readHistory = true;
+			boolean readTrend = false;
+			// Data type without the statistic, which is in the history catalog.
+			String dataTypeNoStat = dataType;
+			if ( dataType.endsWith("-Avg") || dataType.endsWith("-Min") || dataType.endsWith("-Max") ) {
+				// Trend time series.
+				readTrend = true;
+				readHistory = false;
+				if ( !dataInterval.equalsIgnoreCase("Hour") ) {
+					throw new InvalidTimeIntervalException (
+						"Requested time series \"" + tsid + "\" is for trend but interval is not Hour.");
+				}
+				dataTypeNoStat = dataType.substring(0,dataType.length() - 4);
+			}
+			else {
+				// History time series.
+				if ( !dataInterval.equalsIgnoreCase("IrregSecond") ) {
+					throw new InvalidTimeIntervalException (
+						"Requested time series \"" + tsid + "\" is for history but interval is not IrregSecond.");
+				}
+			}
 
-			boolean useCache = true;
 			if ( useCache ) {
-				// Find the time series in the global time series catalog.
-				List<TimeSeriesCatalog> tsidCatalogList =
-					TimeSeriesCatalog.lookupCatalogForTsidParts ( this.globalTscatalogList, locId, dataSource, dataType );
+				// Find the time series in the global time series catalog:
+				// - dataTypeReq - from the TSID
+				// - dataIntervalReq - from the TSID
+				// - dataSource - same as host group name
+				// - locId - same as the host
+				// - hostName - not used with TSID search
+				// - itemName - not used with TSID search
+				List<TimeSeriesCatalog> tsidCatalogList = null;
+				String hostName = null;
+				String itemName = null;
+				if ( readHistory ) {
+					tsidCatalogList = TimeSeriesCatalog.lookupCatalog (
+						this.globalHistoryTscatalogList, dataType, dataInterval, dataSource, locId, hostName, itemName );
+				}
+				else if ( readTrend ) {
+					tsidCatalogList = TimeSeriesCatalog.lookupCatalog (
+						this.globalTrendTscatalogList, dataType, dataInterval, dataSource, locId, hostName, itemName );
+				}
 				// Should match a single time series.
 				if ( tsidCatalogList.size() == 0 ) {
 					throw new RuntimeException ( "Did not match any 'tscatalog' for tsid \"" + tsid + "\".");
@@ -1395,172 +1657,281 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 				// Read the time series catalog for the specific TSID:
 				// - need to read the matching Item
 
-				throw new RuntimeException ( "Reading a time series without using the catalog is not implemented." );
+				throw new RuntimeException ( "Reading a time series catalog without using the cache is not implemented." );
 				//itemList = readItemListForHostGroupAndHost ( dataSource, locId );
 			}
 		}
 		else {
-			if ( (dataIntervalReq != null) && !dataIntervalReq.isEmpty() && !dataIntervalReq.equals("*") ) {
-				// TODO smalers 2023-05-17 how to determine average, etc.
-				// Default to 'IrregSecond'.
+			// Reading one or more time series catalog by matching the query filters:
+			// - if no filters, return the full cache if available
+			boolean doReadCatalog = false; // Whether to do a read using the API.
+
+			// Requested data type might indicate whether historical or trend time series:
+			// - default to reading history but not trend and change below based on input
+			boolean readTrend = false;
+			boolean readHistory = true;
+			String dataTypeReqNoStat = dataTypeReq;
+			if ( (dataTypeReq != null) && (dataTypeReq.endsWith("-Avg") || dataTypeReq.endsWith("-Min") || dataTypeReq.endsWith("-Max")) ) {
+				// Trend time series will be read.
+				readTrend = true;
+				readHistory = false;
+				if ( !dataIntervalReq.equals("*") && !dataIntervalReq.equalsIgnoreCase("Hour") ) {
+					throw new InvalidTimeIntervalException (
+						"Requested data type \"" + dataTypeReq + "\" is for trend but interval is not Hour.");
+				}
+				dataTypeReqNoStat = dataTypeReq.substring(0,dataTypeReq.length() - 4);
 			}
-
-			// Zabbix items correspond to data types + interval.
-			// However, must limit the 'item' queries using a host group or host.
-			// Determine if host group or host is specified in the input filter.
-
-			String hostGroupName = getInputFilterWhere ( ifp, "hostgroup.name" );
-			String hostName = getInputFilterWhere ( ifp, "host.name" );
-			String hostHost = getInputFilterWhere ( ifp, "host.host" );
-			Message.printStatus(2, routine, "hostGroupName=\"" + hostGroupName + "\" hostName=\"" + hostName + "\" host=\"" + hostHost + "\"");
-
-			List<Host> hostList = new ArrayList<>();
-			if ( (hostGroupName == null) && (hostName == null) && (hostHost == null) ) {
-				// No host name or host was requested:
-				// - get all the hosts and query all associated items
-				// - can use the global list of hosts
-				// - this does not seem to work on the full list so read 25 at a time
-				int iChunk = 15;
-				int iStart = -iChunk, iEnd = -1;  // Zero index positions in global host to read.
-				while ( true ) {
-					// Set the indices to get hosts.
-					iStart += iChunk;
-					iEnd += iChunk;
-					if ( iStart >= this.globalHostList.size() ) {
-						// No more data to read.
-						break;
-					}
-					if ( iEnd >= this.globalHostList.size() ) {
-						iEnd = this.globalHostList.size() - 1;
-					}
-					// Get a list of Host to read.
-					List<Host> hostSubList = new ArrayList<>();
-					for ( int i = iStart; i <= iEnd; i++ ) {
-						hostSubList.add(this.globalHostList.get(i));
-					}
-					try {
-						Message.printStatus(2, routine, "Reading items for hosts " + iStart + " through " + iEnd );
-						List<Item> itemSubList = readItemList ( hostSubList );
-						itemList.addAll(itemSubList);
-						Message.printStatus(2, routine, "  Read " + itemSubList.size() + " items, now have " + itemList.size() + " total." );
-					}
-					catch ( Exception e ) {
-						Message.printWarning(3, routine, "  Error reading items." );
-						Message.printWarning(3, routine, e );
-					}
+			else {
+				// History time series:
+				// - either reading all
+				// - or not reading trend (above), so reading history
+				readHistory = true;
+				if ( (dataTypeReq != null) && !dataTypeReq.equals("*") && !dataIntervalReq.equalsIgnoreCase("IrregSecond") ) {
+					throw new InvalidTimeIntervalException (
+						"Requested data type \"" + dataTypeReq + "\" is for history but interval is not IrregSecond.");
 				}
 			}
-			else if ( hostHost != null ) {
-				// Host takes precedence over the group.
-				List<String> hostHostList = new ArrayList<>();
-				hostHostList.add(hostHost);
-				hostList = readHostList ( "host", hostHostList );
-				Message.printStatus(2, routine, "Read " + hostList.size() + " hosts for host \"" + hostHost + "\".");
-				itemList = readItemList ( hostList );
-			}
-			else if ( hostName != null ) {
-				// Host name takes precedence over the group.
-				List<String> hostNameList = new ArrayList<>();
-				hostNameList.add(hostName);
-				hostList = readHostList ( "name", hostNameList );
-				Message.printStatus(2, routine, "Read " + hostList.size() + " hosts for host name \"" + hostName + "\".");
-				itemList = readItemList ( hostList );
-			}
-			else if ( hostGroupName != null ) {
-				List<String> hostGroupList = new ArrayList<>();
-				hostGroupList.add(hostGroupName);
-				hostList = readHostList ( "group", hostGroupList );
-				Message.printStatus(2, routine, "Read " + hostList.size() + " hosts for group \"" + hostGroupName + "\".");
-				itemList = readItemList ( hostList );
-			}
-			Message.printStatus(2, routine, "Read " + itemList.size() + " 'item' objects for time series catalog.");
 
-			// Add query parameters based on the input filter:
-			// - this includes list type parameters and specific parameters to match web service values
-			// - TODO smalers 2023-05-18 need to enable input filters for item data
-			/*
-			int numFilterWheres = 0; // Number of filter where clauses that are added.
-			if ( ifp != null ) {
-	        	int nfg = ifp.getNumFilterGroups ();
-	        	InputFilter filter;
-	        	for ( int ifg = 0; ifg < nfg; ifg++ ) {
-	            	filter = ifp.getInputFilter ( ifg );
-	            	//Message.printStatus(2, routine, "IFP whereLabel =\"" + whereLabel + "\"");
-	            	boolean special = false; // TODO smalers 2022-12-26 might add special filters.
-	            	if ( special ) {
-	            	}
-	            	else {
-	            		// Add the query parameter to the URL.
-				    	filter = ifp.getInputFilter(ifg);
-				    	String queryClause = WebUtil.getQueryClauseFromInputFilter(filter,ifp.getOperator(ifg));
-				    	if ( Message.isDebugOn ) {
-				    		Message.printStatus(2,routine,"Filter group " + ifg + " where is: \"" + queryClause + "\"");
-				    	}
-				    	if ( queryClause != null ) {
-				    		requestUrl.append("&" + queryClause);
-				    		++numFilterWheres;
-				    	}
-	            	}
+			if ( useCache ) {
+				// Attempt to find the requested time series catalog in the cache:
+				// - in certain cases, may need to do a read, which will generally be slower
+				Message.printStatus(2, routine, "Initial checks to read time series catalog using the cache.");
+				if ( ((dataTypeReq == null) || dataTypeReq.isEmpty() || dataTypeReq.equals("*"))
+					&& ((dataIntervalReq == null) || dataIntervalReq.isEmpty() || dataIntervalReq.equals("*"))
+					&& ((ifp == null) || !ifp.hasInput()) ) {
+					// No filters have been requested, typically:
+					// - read global data at startup
+					Message.printStatus(2, routine, "  No filters have been specified.");
+					if ( (this.globalHistoryTscatalogList != null) && (this.globalHistoryTscatalogList.size() > 0) ) {
+						// Have global data so return.
+						Message.printStatus(2, routine, "  Returning the global cache (size="
+							+ this.globalHistoryTscatalogList.size() + ").");
+						return this.globalHistoryTscatalogList;
+					}
+					else {
+						// Don't have the global catalog:
+						// - read the full catalog below.
+						Message.printStatus(2, routine, "  No cache has been read so read using the API." );
+						doReadCatalog = true;
+					}
+				}
+				else {
+					// Have some filters to apply when searching the cached TimeSeriesCatalog:
+					// - if called from the TSTool UI, data type and interval will always have values
+					Message.printStatus(2, routine, "  Getting time series catalog from the cache by matching filters." );
+					String hostGroupName = ifp.getInputValue("hostgroup.name", false);
+					String host = ifp.getInputValue("host", false);
+					String hostName = ifp.getInputValue("host.name", false);
+					String itemName = ifp.getInputValue("item.name",false);
+					Message.printStatus(2, routine, "  dataTypeReq=\"" + dataTypeReq + "\"" );
+					Message.printStatus(2, routine, "  dataIntervalReq=" + dataIntervalReq );
+					Message.printStatus(2, routine, "  hostgroup.name=\"" + hostGroupName + "\"" );
+					Message.printStatus(2, routine, "  host=" + host );
+					Message.printStatus(2, routine, "  host.name=\"" + hostName + "\"" );
+					Message.printStatus(2, routine, "  item.name=\"" + itemName + "\"" );
+					List<TimeSeriesCatalog> tscatalogList = new ArrayList<>();
+					// Read the time series matching the filters.
+					if ( dataTypeReq.equals("*") || readHistory ) {
+						// Try to match history time series.
+						tscatalogList = TimeSeriesCatalog.lookupCatalog(this.globalHistoryTscatalogList,
+							dataTypeReq,
+							dataIntervalReq,
+							hostGroupName,
+							host,
+							hostName,
+							itemName );
+						Message.printStatus(2, routine, "  Matched " + tscatalogList.size() + " history time series catalog." );
+					}
+					else if ( dataTypeReq.equals("*") || readTrend ) {
+						// Try to match trend time series.
+						List<TimeSeriesCatalog> tscatalogList2 = TimeSeriesCatalog.lookupCatalog(this.globalTrendTscatalogList,
+							dataTypeReq,
+							dataIntervalReq,
+							hostGroupName,
+							host,
+							hostName,
+							itemName );
+						tscatalogList.addAll(tscatalogList2);
+						Message.printStatus(2, routine, "  Matched " + tscatalogList2.size() + " trend time series catalog." );
+					}
+					return tscatalogList;
+				}
+			}
+			else {
+				// Not reading using the cache so read the catalog from the API below.
+				doReadCatalog = true;
+			}
+			if ( doReadCatalog ) {
+				// Either the cache was not requested, or cannot use the cache and 'doReadCatalog=true' was set above.
+				
+				// Read the catalog using API calls:
+				// - the global cache is not used
+				// - may be the full catalog (e.g., for global cache)
+				// - or, may be filtered 
+				// Reading multiple time series.
+				if ( (dataIntervalReq != null) && !dataIntervalReq.isEmpty() && !dataIntervalReq.equals("*") ) {
+					// TODO smalers 2023-05-17 how to determine average, etc.
+					// Default to 'IrregSecond'.
+				}
+
+				// Zabbix items correspond to data types + interval.
+				// However, must limit the 'item' queries using a host group or host.
+				// Determine if host group or host is specified in the input filter.
+
+				String hostGroupName = getInputFilterWhere ( ifp, "hostgroup.name" );
+				String hostName = getInputFilterWhere ( ifp, "host.name" );
+				String hostHost = getInputFilterWhere ( ifp, "host.host" );
+				Message.printStatus(2, routine, "hostGroupName=\"" + hostGroupName + "\" hostName=\"" + hostName + "\" host=\"" + hostHost + "\"");
+
+				List<Host> hostList = new ArrayList<>();
+				if ( (hostGroupName == null) && (hostName == null) && (hostHost == null) ) {
+					// No host name or host was requested:
+					// - get all the hosts and query all associated items
+					// - can use the global list of hosts
+					// - this does not seem to work on the full list so read 25 at a time
+					int iChunk = 15;
+					int iStart = -iChunk, iEnd = -1;  // Zero index positions in global host to read.
+					while ( true ) {
+						// Set the indices to get hosts.
+						iStart += iChunk;
+						iEnd += iChunk;
+						if ( iStart >= this.globalHostList.size() ) {
+							// No more data to read.
+							break;
+						}
+						if ( iEnd >= this.globalHostList.size() ) {
+							iEnd = this.globalHostList.size() - 1;
+						}
+						// Get a list of Host to read.
+						List<Host> hostSubList = new ArrayList<>();
+						for ( int i = iStart; i <= iEnd; i++ ) {
+							hostSubList.add(this.globalHostList.get(i));
+						}
+						try {
+							Message.printStatus(2, routine, "Reading items for hosts " + iStart + " through " + iEnd + ".");
+							List<Item> itemSubList = readItemList ( hostSubList );
+							itemList.addAll(itemSubList);
+							Message.printStatus(2, routine, "  Read " + itemSubList.size() + " items, now have " + itemList.size() + " total." );
+						}
+						catch ( Exception e ) {
+							Message.printWarning(3, routine, "  Error reading items." );
+							Message.printWarning(3, routine, e );
+						}
+					}
+				}
+				else if ( hostHost != null ) {
+					// Host takes precedence over the group.
+					List<String> hostHostList = new ArrayList<>();
+					hostHostList.add(hostHost);
+					hostList = readHostList ( "host", hostHostList );
+					Message.printStatus(2, routine, "Read " + hostList.size() + " hosts for host \"" + hostHost + "\".");
+					itemList = readItemList ( hostList );
+				}
+				else if ( hostName != null ) {
+					// Host name takes precedence over the group.
+					List<String> hostNameList = new ArrayList<>();
+					hostNameList.add(hostName);
+					hostList = readHostList ( "name", hostNameList );
+					Message.printStatus(2, routine, "Read " + hostList.size() + " hosts for host name \"" + hostName + "\".");
+					itemList = readItemList ( hostList );
+				}
+				else if ( hostGroupName != null ) {
+					List<String> hostGroupList = new ArrayList<>();
+					hostGroupList.add(hostGroupName);
+					hostList = readHostList ( "group", hostGroupList );
+					Message.printStatus(2, routine, "Read " + hostList.size() + " hosts for group \"" + hostGroupName + "\".");
+					itemList = readItemList ( hostList );
+				}
+				Message.printStatus(2, routine, "Read " + itemList.size() + " 'item' objects for time series catalog.");
+
+				// Add query parameters based on the input filter:
+				// - this includes list type parameters and specific parameters to match web service values
+				// - TODO smalers 2023-05-18 need to enable input filters for item data
+				/*
+				int numFilterWheres = 0; // Number of filter where clauses that are added.
+				if ( ifp != null ) {
+	        		int nfg = ifp.getNumFilterGroups ();
+	        		InputFilter filter;
+	        		for ( int ifg = 0; ifg < nfg; ifg++ ) {
+	            		filter = ifp.getInputFilter ( ifg );
+	            		//Message.printStatus(2, routine, "IFP whereLabel =\"" + whereLabel + "\"");
+	            		boolean special = false; // TODO smalers 2022-12-26 might add special filters.
+	            		if ( special ) {
+	            		}
+	            		else {
+	            			// Add the query parameter to the URL.
+				    		filter = ifp.getInputFilter(ifg);
+				    		String queryClause = WebUtil.getQueryClauseFromInputFilter(filter,ifp.getOperator(ifg));
+				    		if ( Message.isDebugOn ) {
+				    			Message.printStatus(2,routine,"Filter group " + ifg + " where is: \"" + queryClause + "\"");
+				    		}
+				    		if ( queryClause != null ) {
+				    			requestUrl.append("&" + queryClause);
+				    			++numFilterWheres;
+				    		}
+	            		}
+	        		}
 	        	}
-	        }
-	        */
-			//Message.printStatus(2, routine, "Reading 1+ station time series metadata using:" );
-			//Message.printStatus(2, routine, "  " + requestUrlString);
-		}
-
-		// If here have matching 'Item' to process into TimeSeriesCatalog.
-
-		List<TimeSeriesCatalog> tscatalogList = new ArrayList<>();
-		String dataInterval = "IrregSecond";
-
-		// Loop through the 'Item' instances and create corresponding TimeSeriesCatalog entries.
-		for ( Item item : itemList ) {
-
-			TimeSeriesCatalog tscatalog = new TimeSeriesCatalog();
-
-			// Look up the related host from the cached data.
-			Host host = Host.lookupHostForId ( this.globalHostList, item.getHostid() );
-
-			tscatalog.setLocId ( host.getHost() );
-			tscatalog.setDataInterval ( dataInterval );
-			tscatalog.setDataType ( item.getName() );
-			tscatalog.setDataUnits ( item.getUnits() );
-
-			// Host group data, listed alphabetically.
-			if ( host != null ) {
-				// Look up the host group:
-				// - Zabbix allows a host to be in multiple groups
-				// - however, for identification, use the first group
-				List<HostGroup> hostGroupList = host.getGroups();
-				if ( (hostGroupList != null) && (hostGroupList.size() > 0) ) {
-					HostGroup hostGroup = hostGroupList.get(0);
-					if ( hostGroup != null ) {
-						tscatalog.setHostGroupId ( hostGroup.getGroupid() );
-						tscatalog.setHostGroupName ( hostGroup.getName() );
-					}
-				}
-
-				// Host data, listed alphabetically.
-				tscatalog.setHost ( host.getHost() );
-				tscatalog.setHostDescription ( host.getDescription() );
-				tscatalog.setHostId ( host.getHostid() );
-				tscatalog.setHostName ( host.getName() );
+	        	*/
+				//Message.printStatus(2, routine, "Reading 1+ station time series metadata using:" );
+				//Message.printStatus(2, routine, "  " + requestUrlString);
 			}
 
-			// Item data, listed alphabetically.
-			tscatalog.setItemDelay ( item.getDelay() );
-			tscatalog.setItemHistory ( item.getHistory() );
-			tscatalog.setItemId ( item.getItemid() );
-			tscatalog.setItemKey ( item.getKey() );
-			tscatalog.setItemName ( item.getName() );
-			tscatalog.setItemUnits ( item.getUnits() );
-			tscatalog.setItemValueType ( item.getValueType() );
+			// If here have matching 'Item' to process into TimeSeriesCatalog.
 
-			tscatalogList.add(tscatalog);
+			List<TimeSeriesCatalog> tscatalogList = new ArrayList<>();
+			String dataInterval = "IrregSecond";
+
+			// Loop through the 'Item' instances and create corresponding TimeSeriesCatalog entries.
+			for ( Item item : itemList ) {
+
+				TimeSeriesCatalog tscatalog = new TimeSeriesCatalog();
+
+				// Look up the related host from the cached data.
+				Host host = Host.lookupHostForId ( this.globalHostList, item.getHostid() );
+
+				tscatalog.setLocId ( host.getHost() );
+				tscatalog.setDataInterval ( dataInterval );
+				tscatalog.setDataType ( item.getName() );
+				tscatalog.setDataUnits ( item.getUnits() );
+
+				// Host group data, listed alphabetically.
+				if ( host != null ) {
+					// Look up the host group:
+					// - Zabbix allows a host to be in multiple groups
+					// - however, for identification, use the first group
+					List<HostGroup> hostGroupList = host.getGroups();
+					if ( (hostGroupList != null) && (hostGroupList.size() > 0) ) {
+						HostGroup hostGroup = hostGroupList.get(0);
+						if ( hostGroup != null ) {
+							tscatalog.setHostGroupId ( hostGroup.getGroupid() );
+							tscatalog.setHostGroupName ( hostGroup.getName() );
+						}
+					}
+
+					// Host data, listed alphabetically.
+					tscatalog.setHost ( host.getHost() );
+					tscatalog.setHostDescription ( host.getDescription() );
+					tscatalog.setHostId ( host.getHostid() );
+					tscatalog.setHostName ( host.getName() );
+				}
+
+				// Item data, listed alphabetically.
+				tscatalog.setItemDelay ( item.getDelay() );
+				tscatalog.setItemHistory ( item.getHistory() );
+				tscatalog.setItemId ( item.getItemid() );
+				tscatalog.setItemKey ( item.getKey() );
+				tscatalog.setItemName ( item.getName() );
+				tscatalog.setItemType ( item.getType() );
+				tscatalog.setItemUnits ( item.getUnits() );
+				tscatalog.setItemValueType ( item.getValueType() );
+
+				tscatalogList.add(tscatalog);
+			}
+
+			Message.printStatus(2, routine, "Read " + tscatalogList.size() + " Zabbix history time series catalog using 'item' list.");
+			return tscatalogList;
 		}
-
-		Message.printStatus(2, routine, "Created " + tscatalogList.size() + " Zabbix time series catalog.");
-		return tscatalogList;
 	}
 
     /**
@@ -1584,6 +1955,49 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 	   	// - the filter panel options can be used to constrain
 	    return readTimeSeriesCatalog ( tsid, dataTypeReq, dataIntervalReq, ifp );
 	}
+
+    /**
+     * Read the trend list from the web service.
+     * See (current): https://www.zabbix.com/documentation/current/en/manual/api/reference/trend/get
+     * See (5.4):  https://www.zabbix.com/documentation/5.4/en/manual/api/reference/trend/get
+     * @param itemid itemid to match
+     * @param timeFrom timestamp to start read
+     * @param timeTill timestamp to end read
+     * @return the trend list, may be an empty list if a problem or no data
+     */
+    private List<Trend> readTrendList ( String itemid, long timeFrom, long timeTill) {
+		String routine = getClass().getSimpleName() + ".readTrendList";
+		String requestUrl = getServiceRootURI().toString();
+		List<String> itemidList = new ArrayList<>();
+		itemidList.add(itemid);
+		// Seems to require 'output'.
+		String requestData =
+			"{"
+				+ "\"jsonrpc\": \"2.0\","
+				+ "\"method\": \"trend.get\","
+				+ "\"params\": {"
+					+ "\"output\": \"extend\","
+					+ "\"sortfield\": \"clock\","
+					+ "\"sortorder\": \"ASC\""
+					+ getParamTimeFrom(true, timeFrom)
+					+ getParamTimeTill(true, timeTill)
+					+ getParamItemIds(true, itemidList)
+				+ "},"
+				+ "\"id\": 1"
+				+ getAuthJSON()
+    		+ "}";
+		Message.printStatus(2, routine, "Request data = " + requestData);
+		String dataElement = "result";  // 'result' contains an array of the objects.
+		try {
+			String trendJson = JacksonToolkit.getInstance().getJsonFromWebServiceUrl ( requestUrl, getApiToken(), requestData, dataElement );
+			List<Trend> trend = JacksonToolkit.getInstance().getObjectMapper().readValue(trendJson, new TypeReference<List<Trend>>(){});
+			return trend;
+		}
+		catch ( Exception e ) {
+			Message.printWarning(3,routine,e);
+			return new ArrayList<Trend>();
+		}
+    }
 
     /**
      * Read the user login from the web service, used with older (Zabbix version < 6.0?).

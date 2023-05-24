@@ -25,6 +25,8 @@ package org.openwaterfoundation.tstool.plugin.zabbix.dao;
 import java.util.ArrayList;
 import java.util.List;
 
+import RTi.Util.Message.Message;
+
 /**
  * Class to store time series catalog (metadata) for Zabbix TSTool time series list.
  * This is a combination of standard time series properties used in TSTool and KiWIS data.
@@ -58,6 +60,7 @@ public class TimeSeriesCatalog {
 	private String itemId = "";
 	private String itemKey = "";
 	private String itemName = "";
+	private String itemType = "";
 	private String itemUnits = "";
 	private String itemValueType = "";
 
@@ -110,6 +113,7 @@ public class TimeSeriesCatalog {
 		// Host data, listed alphabetically.
 		//private Double stationLatitude = null;
 		//private Double stationLongitude = null;
+		this.host= timeSeriesCatalog.host;
 		this.hostDescription = timeSeriesCatalog.hostDescription;
 		this.hostId = timeSeriesCatalog.hostId;
 		this.hostName = timeSeriesCatalog.hostName;
@@ -120,6 +124,7 @@ public class TimeSeriesCatalog {
 		this.itemId = timeSeriesCatalog.itemId;
 		this.itemKey = timeSeriesCatalog.itemKey;
 		this.itemName = timeSeriesCatalog.itemName;
+		this.itemType = timeSeriesCatalog.itemType;
 		this.itemUnits = timeSeriesCatalog.itemUnits;
 		this.itemValueType = timeSeriesCatalog.itemValueType;
 
@@ -305,6 +310,10 @@ public class TimeSeriesCatalog {
 		return this.itemName;
 	}
 
+	public String getItemType ( ) {
+		return this.itemType;
+	}
+
 	public String getItemUnits ( ) {
 		return this.itemUnits;
 	}
@@ -318,31 +327,76 @@ public class TimeSeriesCatalog {
 	}
 
 	/**
-	 * Lookup time series catalog using the host group name and host.
+	 * Lookup time series catalog using parts from the TSTool main UI and input filters.
 	 * This is called when reading a time series using a TSID.
-	 * @param tscatalogList0 list of TimeSeriesCatalog to search, for example the global list.
-	 * @param host Host.host to match, null to ignore
+	 * @param tscatalogListToSearch list of TimeSeriesCatalog to search, for example the global list.
+	 * @param dataType the data type to match, null or "*" to ignore
+	 * @param dataInterval the data interval to match, null or "*" to ignore
 	 * @param hostgroup.name HostGroup.name to match, null to ignore
-	 * @param item.name Item.name to match, null to ignore
+	 * @param host Host.host to match, null to ignore
+	 * @param hostName Host.name to match, null to ignore
+	 * @param itemName Item.name to match, null to ignore
 	 */
-	public static List<TimeSeriesCatalog> lookupCatalogForTsidParts ( List<TimeSeriesCatalog> tscatalogList0,
-		String host, String hostGroupName, String itemName ) {
+	public static List<TimeSeriesCatalog> lookupCatalog ( List<TimeSeriesCatalog> tscatalogListToSearch,
+		String dataType, String dataInterval,
+		String hostGroupName,
+		String host,
+		String hostName,
+		String itemName ) {
+		//String routine = TimeSeriesCatalog.class.getSimpleName() + ".lookupCatalog";
 		List<TimeSeriesCatalog> tscatalogList = new ArrayList<>();
 		boolean doAdd = false;
-		if ( tscatalogList0 != null ) { 
-			for ( TimeSeriesCatalog tscatalog : tscatalogList0 ) {
+		boolean doCheckDataType = true;
+		boolean doCheckDataInterval = true;
+		if ( (dataType != null) && dataType.equals("*") ) {
+			// No need to check data type (all will match).
+			doCheckDataType = false;
+		}
+		if ( (dataInterval != null) && dataInterval.equals("*") ) {
+			// No need to check data interval (all will match).
+			doCheckDataInterval = false;
+		}
+		if ( tscatalogListToSearch != null ) { 
+			for ( TimeSeriesCatalog tscatalog : tscatalogListToSearch ) {
+				/*
+				Message.printStatus(2, routine, "Comparing to dataType=\"" + tscatalog.getDataType()
+					+ "\" dataInterval=\"" + tscatalog.getDataInterval()
+					+ "\" hostGroupName=\"" + tscatalog.getHostGroupName()
+					+ "\" host=\"" + tscatalog.getHost()
+					+ "\" hostName=\"" + tscatalog.getHostName()
+					+ "\" itemName=\"" + tscatalog.getItemName() + "\"");
+					*/
+				// Default is the catalog is matched.
 				doAdd = true;
-				if ( host != null ) {
-					if ( !tscatalog.getHost().equals(host) )
+				if ( doCheckDataType && (dataType != null) ) {
+					if ( !tscatalog.getDataType().equals(dataType) ) {
 						doAdd = false;
+					}	
+				}
+				if ( doCheckDataInterval && (dataInterval != null) ) {
+					if ( !tscatalog.getDataInterval().equals(dataInterval) ) {
+						doAdd = false;
+					}	
 				}
 				if ( hostGroupName != null ) {
-					if ( !tscatalog.getHostGroupName().equals(hostGroupName) )
+					if ( !tscatalog.getHostGroupName().equals(hostGroupName) ) {
 						doAdd = false;
+					}	
+				}
+				if ( host != null ) {
+					if ( !tscatalog.getHost().equals(host) ) {
+						doAdd = false;
+					}	
+				}
+				if ( hostName != null ) {
+					if ( !tscatalog.getHostName().equals(hostName) ) {
+						doAdd = false;
+					}	
 				}
 				if ( itemName != null ) {
-					if ( !tscatalog.getItemName().equals(itemName) )
+					if ( !tscatalog.getItemName().equals(itemName) ) {
 						doAdd = false;
+					}
 				}
 				if ( doAdd ) {
 					tscatalogList.add(tscatalog);
@@ -415,6 +469,10 @@ public class TimeSeriesCatalog {
 
 	public void setItemName ( String itemName ) {
 		this.itemName = itemName;
+	}
+
+	public void setItemType ( String itemType ) {
+		this.itemType = itemType;
 	}
 
 	public void setItemUnits ( String itemUnits ) {

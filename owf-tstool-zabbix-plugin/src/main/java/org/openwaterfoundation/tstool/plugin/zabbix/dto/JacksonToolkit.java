@@ -97,14 +97,15 @@ public class JacksonToolkit {
 			requestProperties.add("Authorizatione", "Bearer " + apiToken);
 			UrlReader urlReader = new UrlReader(url, requestProperties, requestData );
 			UrlResponse urlResponse = urlReader.read();
+			// Get the response for the initial request.
 			String responseJson = urlResponse.getResponse();
 			if ( Message.isDebugOn ) {
-				// This could be large so may need to increase the level.
-				// The following contains the general wrapper.
+				// This could be large so may need to increase the debug level.
+				// The following contains the general wrapper that generally contains either 'result' or 'error' object.
 				Message.printDebug(1, routine, "Response JSON = " + responseJson);
 			}
 			if ( urlResponse.getResponseCode() == 200 ) {
-				// Success.
+				// Successful request, but still could contain 'error'.
 				if ( responseJson == null ) {
 					throw new IOException ( "Error from request, URL=\"" + url + "\" - null response.");
 				}
@@ -112,39 +113,40 @@ public class JacksonToolkit {
 					// Have a response to process, but could be an error.
 					String responseJson2 = null;
 					if ( (dataElement != null) && !dataElement.isEmpty() ) {
-						// Have requested a specific element so extract it for parsing.
+						// Have requested a specific element (e.g., "result") so extract it for parsing.
 						// - get everything in the object but not the object name itself
+						// - the following will return null if the data element was not found (e.g., "error")
 						responseJson2 = JsonUtil.extractObjectString(responseJson, dataElement, false);
 						if ( Message.isDebugOn ) {
 							// This could be large so may need to increase the level.
 							Message.printDebug(1, routine, "Extracted JSON for \"" + dataElement + "\" = " + responseJson2);
 						}
-					}
-					if ( responseJson2 == null ) {
-						// The expected JSON name (or top-level data) is not found:
-						// - search for 'error' name
-						// - get everything in the 'error' but not 'error' name itself
-						String errorJson = JsonUtil.extractObjectString(responseJson, "error", false);
-						// Decode the error object.
-						if ( (errorJson != null) && !errorJson.isEmpty() ) {
-							// Decode the error to get the message
-							ApiError error = JacksonToolkit.getInstance().getObjectMapper().readValue(errorJson, new TypeReference<ApiError>(){});
-							if ( error == null ) {
-								throw new IOException ( "Error from request, URL=\"" + url + "\" unable to determine error.");
+						if ( responseJson2 == null ) {
+							// The expected JSON name (or top-level data) is not found:
+							// - search for 'error' name
+							// - get everything in the 'error' but not 'error' name itself
+							String errorJson = JsonUtil.extractObjectString(responseJson, "error", false);
+							// Decode the error object.
+							if ( (errorJson != null) && !errorJson.isEmpty() ) {
+								// Decode the error to get the message
+								ApiError error = JacksonToolkit.getInstance().getObjectMapper().readValue(errorJson, new TypeReference<ApiError>(){});
+								if ( error == null ) {
+									throw new IOException ( "Error from request, URL=\"" + url + "\" unable to determine error.");
+								}
+								else {
+									throw new IOException ( "Error from request, URL=\"" + url + "\" message=\"" + error.getMessage()
+											+ "\" detailedMessage=\"" + error.getDetailedMessage() + "\" requestData='" + requestData + "'.");
+								}
 							}
 							else {
-								throw new IOException ( "Error from request, URL=\"" + url + "\" message=\"" + error.getMessage()
-									+ "\" detailedMessage=\"" + error.getDetailedMessage() + "\" requestData='" + requestData + "'.");
+								Message.printStatus(2, routine, "Could not find 'error' object in response (and requested object '"
+									+ dataElement + "' was not found either).");
 							}
 						}
 						else {
-							Message.printStatus(2, routine, "Could not find 'error' object in response (and requested object '"
-								+ dataElement + "' was not found either).");
+							// Had a valid response matching 'dataElement' so return the value below.
+							responseJson = responseJson2;
 						}
-					}
-					else {
-						// Had a valid response so return the value below.
-						responseJson = responseJson2;
 					}
 				}
 			}

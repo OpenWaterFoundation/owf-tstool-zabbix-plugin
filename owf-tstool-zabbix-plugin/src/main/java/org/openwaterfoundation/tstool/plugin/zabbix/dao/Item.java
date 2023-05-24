@@ -53,6 +53,11 @@ public class Item {
 	private String name = "";
 
 	/**
+	 * Item 'type'.
+	 */
+	private String type = "";
+
+	/**
 	 * Item 'key'.
 	 */
 	@JsonProperty("key_")
@@ -199,6 +204,14 @@ public class Item {
 	 */
 	public String getName () {
 		return this.name;
+	}
+
+	/**
+	 * Return the item type.
+	 * @return the item type
+	 */
+	public String getType () {
+		return this.type;
 	}
 
 	/**

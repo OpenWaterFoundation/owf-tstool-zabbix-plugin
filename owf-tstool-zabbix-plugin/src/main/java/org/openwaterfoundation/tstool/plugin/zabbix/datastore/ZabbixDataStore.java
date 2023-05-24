@@ -375,6 +375,29 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 		List<TimeSeriesCatalog> tsmetaList = readTimeSeriesMeta ( dataType, timeStep, ifp );
 		return getTimeSeriesListTableModel(tsmetaList);
 	}
+	
+	/**
+	 * Escape (protect) a TSID part to ensure that it works well with TSID.
+	 * If the part contains a space or period, the returned value will be surrounded by single quotes.
+	 * @param tsidPart time series identifier part
+	 * @return the part surrounded by single quotes if necessary, otherwise the original value
+	 */
+	public String escapeTsidPart ( String tsidPart ) {
+		if ( (tsidPart.indexOf(" ") > 0) || (tsidPart.indexOf(".") > 0) ) {
+			if ( !tsidPart.startsWith("'") ) {
+				// Escape the part by surrounding with single quotes.
+				return "'" + tsidPart + "'";
+			}
+			else {
+				// Already escaped.
+				return tsidPart;
+			}
+		}
+		else {
+			// Return the original part.
+			return tsidPart;
+		}
+	}
 
 	/**
 	 * Get the list of location identifier (station_no) strings used in the UI.
@@ -513,6 +536,36 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 	 */
 	public List<String> getItemNames() {
 		return this.globalItemNameList;
+	}
+	
+	/**
+	 * Get the location identifier strings.
+	 * This is used by the ReadZabbix command editor.
+	 * The locIds are looked up from the global history and trend catalog.
+	 * @param dataSource data source of interest (host group name)
+	 * @param dataType data type of interest (item name)
+	 * @param dataInterval data interval of interest (IrregSecond or Hour)
+	 * @param includeWildcards whether to include "*" wildcards
+	 * @param includeNote if true add host name at after " - " at the end
+	 * @return a unique list of locId from the time series catalog, sorted and always not null (but may be an empty list)
+	 */
+	public List<String> getLocIdStrings ( String dataSource, String dataType, String dataInterval,
+		boolean includeWildcards, boolean includeNote ) {
+		List<String> locIdList = new ArrayList<>();
+		List<TimeSeriesCatalog> tscatalogList = null;
+		String locId = null; // null, since it is what is being looked up.
+		String hostName = null; // Not used in this lookup.
+		String itemName = null; // itemName is not used since data type (possibly with trend statistic) controls.
+		if ( isTrendDataType(dataType) ) {
+			tscatalogList = TimeSeriesCatalog.lookupCatalog (
+				this.globalTrendTscatalogList, dataType, dataInterval, dataSource, locId, hostName, itemName );
+		}
+		else {
+			tscatalogList = TimeSeriesCatalog.lookupCatalog (
+				this.globalHistoryTscatalogList, dataType, dataInterval, dataSource, locId, hostName, itemName );
+		}
+		locIdList = TimeSeriesCatalog.getDistinctLocIds(tscatalogList, includeNote );
+		return locIdList;
 	}
 
 	/**
@@ -719,8 +772,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 				}
 			}
 		}
-		else if ( (dataType != null) &&
-			(dataType.endsWith("-Avg") || dataType.endsWith("Max") || dataType.endsWith("Min")) ) {
+		else if ( (dataType != null) && isTrendDataType(dataType) ) {
 			// Trend time series.
 			dataIntervals.add("Hour");
 		}
@@ -728,6 +780,34 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 			dataIntervals.add("IrregSecond");
 		}
 		return dataIntervals;
+	}
+
+	/**
+	 * Get the data source strings.
+	 * This is used by the ReadZabbix command editor.
+	 * The data sources are looked up from the global history and trend catalog.
+	 * @param dataType data type of interest (item name)
+	 * @param dataInterval data interval of interest (IrregSecond or Hour)
+	 * @param includeWildcards whether to include "*" wildcards
+	 * @return a unique list of locId from the time series catalog, sorted and always not null (but may be an empty list)
+	 */
+	public List<String> getTimeSeriesDataSourceStrings ( String dataType, String dataInterval, boolean includeWildcards ) {
+		List<String> dataSourceList = new ArrayList<>();
+		List<TimeSeriesCatalog> tscatalogList = null;
+		String dataSource = null; // null, since this is being looked up.
+		String locId = null; // null, since don't have that yet (have to pick data source first).
+		String hostName = null; // Not used in this lookup.
+		String itemName = null; // itemName is not used since data type (possibly with trend statistic) controls.
+		if ( isTrendDataType(dataType) ) {
+			tscatalogList = TimeSeriesCatalog.lookupCatalog (
+				this.globalTrendTscatalogList, dataType, dataInterval, dataSource, locId, hostName, itemName );
+		}
+		else {
+			tscatalogList = TimeSeriesCatalog.lookupCatalog (
+				this.globalHistoryTscatalogList, dataType, dataInterval, dataSource, locId, hostName, itemName );
+		}
+		dataSourceList = TimeSeriesCatalog.getDistinctDataSources(tscatalogList);
+		return dataSourceList;
 	}
 
 	/**
@@ -798,20 +878,11 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
     	Zabbix_TimeSeries_TableModel tm = (Zabbix_TimeSeries_TableModel)tableModel;
     	// Should not have any nulls.
    		String locId = (String)tableModel.getValueAt(row,tm.COL_LOCATION_ID);
-   		if ( (locId.indexOf(' ') > 0) || (locId.indexOf('.') > 0) ) {
-   			// Surround the location ID (host) with single quotes.
-   			locId = "'" + locId + "'";
-   		}
+   		locId = escapeTsidPart(locId);
     	String source = (String)tableModel.getValueAt(row,tm.COL_DATA_SOURCE);
-   		if ( (source.indexOf(' ') > 0) || (source.indexOf('.') > 0) ) {
-   			// Surround the source (host group name) with single quotes.
-   			source = "'" + source + "'";
-   		}
+   		source = escapeTsidPart(source);
     	String dataType = (String)tableModel.getValueAt(row,tm.COL_DATA_TYPE);
-   		if ( (dataType.indexOf(' ') > 0) || (dataType.indexOf('.') > 0) ) {
-   			// Surround the data type (item name) with single quotes.
-   			dataType = "'" + dataType + "'";
-   		}
+   		dataType = escapeTsidPart(dataType);
     	String interval = (String)tableModel.getValueAt(row,tm.COL_DATA_INTERVAL);
     	String scenario = "";
     	String inputName = ""; // Only used for files.
@@ -841,6 +912,21 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 	public JWorksheet_AbstractRowTableModel getTimeSeriesListTableModel(List<? extends Object> data) {
     	return new Zabbix_TimeSeries_TableModel(this,(List<TimeSeriesCatalog>)data);
     }
+
+    /**
+     * Determine whether a data type is for trend data (ends in "-Avg", "-Max", or "-Min").
+     * This does not check for "*" so must do that separately.
+     * @param dataType data type to query
+     * @return true if a data type is for trend data.
+     */
+    private boolean isTrendDataType ( String dataType ) {
+		if ( dataType.endsWith("-Avg") || dataType.endsWith("Max") || dataType.endsWith("Min") ) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
 
 	/**
 	 * Indicate whether the datastore provides a time series input filter.
@@ -1175,8 +1261,9 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
      * @param readProperties additional properties to control the query:
      * <ul>
      * <li> "Debug" - if true, turn on debug for the query</li>
-     * <li> "ShiftTrendToIntervalEnd" - if true, shift trend clock by 3600 seconds to the end of the interval
-     *      (the default is at the start of the interval)</li>
+     * <li> "ShiftTrendToIntervalEnd" - if boolean or String is true, shift trend clock by 3600 seconds to the end of the interval
+     *      (Zabbix uses the start of the interval), default value is true</li>
+     * <li> "TimeZone" - the time zone to use for ouput</li>
      * </ul>
      * @return the time series or null if not read
      */
@@ -1185,18 +1272,34 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
     	String routine = getClass().getSimpleName() + ".readTimeSeries";
     	
     	// Set properties for specific functionality.
-    	// TODO need to enable debug as temporary setting in this function
-    	boolean shiftTrendToIntervalEnd = false;
+    	
+    	// Default is to use TSTool end of interval time for trend.
+    	boolean shiftTrendToIntervalEnd = true;
 
+    	String timeZone = null;
     	if ( readProperties != null ) {
+    		// TODO need to enable debug as temporary setting in this function
     		Object propObject = readProperties.get ( "Debug" );
 
     		propObject = readProperties.get ( "ShiftTrendToIntervalEnd" );
     		if ( propObject != null ) {
-    			String propString = (String)propObject;
-    			if ( propString.equalsIgnoreCase("true") ) {
-    				shiftTrendToIntervalEnd = true;
+    			if ( propObject instanceof String ) {
+    				String propString = (String)propObject;
+    				if ( propString.equalsIgnoreCase("true") ) {
+    					shiftTrendToIntervalEnd = true;
+    				}
+    				else if ( propString.equalsIgnoreCase("false") ) {
+    					shiftTrendToIntervalEnd = false;
+    				}
     			}
+    			else if ( propObject instanceof Boolean ) {
+    				shiftTrendToIntervalEnd = (Boolean)propObject;
+    			}
+    		}
+
+    		propObject = readProperties.get ( "TimeZone" );
+    		if ( propObject != null ) {
+    			timeZone = (String)propObject;
     		}
     	}
 
@@ -1239,7 +1342,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
  		// 0 = Avg
  		// 1 = Max
  		int valueStat = -999;
- 		if ( dataType.endsWith("-Avg") || dataType.endsWith("-Min") || dataType.endsWith("-Max") ) {
+ 		if ( isTrendDataType(dataType) ) {
  			// Trend time series.
  			readTrend = true;
  			readHistory = false;
@@ -1248,10 +1351,10 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
  					"Requested time series \"" + tsidReq + "\" is trend but interval is not Hour.");
  			}
  			if ( dataType.endsWith("-Avg") ) {
- 				valueStat = -1;
+ 				valueStat = 0;
  			}
  			else if ( dataType.endsWith("-Min") ) {
- 				valueStat = 0;
+ 				valueStat = -1;
  			}
  			else if ( dataType.endsWith("-Max") ) {
  				valueStat = 1;
@@ -1604,7 +1707,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 			boolean readTrend = false;
 			// Data type without the statistic, which is in the history catalog.
 			String dataTypeNoStat = dataType;
-			if ( dataType.endsWith("-Avg") || dataType.endsWith("-Min") || dataType.endsWith("-Max") ) {
+			if ( isTrendDataType(dataType) ) {
 				// Trend time series.
 				readTrend = true;
 				readHistory = false;
@@ -1671,7 +1774,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 			boolean readTrend = false;
 			boolean readHistory = true;
 			String dataTypeReqNoStat = dataTypeReq;
-			if ( (dataTypeReq != null) && (dataTypeReq.endsWith("-Avg") || dataTypeReq.endsWith("-Min") || dataTypeReq.endsWith("-Max")) ) {
+			if ( (dataTypeReq != null) && isTrendDataType(dataTypeReq) ) {
 				// Trend time series will be read.
 				readTrend = true;
 				readHistory = false;
@@ -1891,8 +1994,9 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 				Host host = Host.lookupHostForId ( this.globalHostList, item.getHostid() );
 
 				tscatalog.setLocId ( host.getHost() );
-				tscatalog.setDataInterval ( dataInterval );
+				// Data source is set below with host group data.
 				tscatalog.setDataType ( item.getName() );
+				tscatalog.setDataInterval ( dataInterval );
 				tscatalog.setDataUnits ( item.getUnits() );
 
 				// Host group data, listed alphabetically.
@@ -1904,6 +2008,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 					if ( (hostGroupList != null) && (hostGroupList.size() > 0) ) {
 						HostGroup hostGroup = hostGroupList.get(0);
 						if ( hostGroup != null ) {
+							tscatalog.setDataSource ( hostGroup.getName() );
 							tscatalog.setHostGroupId ( hostGroup.getGroupid() );
 							tscatalog.setHostGroupName ( hostGroup.getName() );
 						}

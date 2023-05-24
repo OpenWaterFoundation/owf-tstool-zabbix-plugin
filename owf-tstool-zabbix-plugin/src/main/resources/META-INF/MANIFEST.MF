@@ -11,5 +11,7 @@ DataStore-Class: org.openwaterfoundation.tstool.plugin.zabbix.
  datastore.ZabbixDataStore
 DataStoreFactory-Class: org.openwaterfoundation.tstool.plugin.zabbix.
  datastore.ZabbixDataStoreFactory
+Command-Class1: org.openwaterfoundation.tstool.plugin.zabbix.
+ commands.ReadZabbix_Command
 Class-Path: dep/
 

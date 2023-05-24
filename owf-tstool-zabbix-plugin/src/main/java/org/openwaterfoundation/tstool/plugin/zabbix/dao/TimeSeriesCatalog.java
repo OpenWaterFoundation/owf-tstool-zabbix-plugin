@@ -23,6 +23,7 @@ NoticeEnd */
 package org.openwaterfoundation.tstool.plugin.zabbix.dao;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import RTi.Util.Message.Message;
@@ -38,8 +39,9 @@ public class TimeSeriesCatalog {
 
 	// General data, provided by TSTool, extracted/duplicated from Zabbix services.
 	private String locId = ""; // From host.host.
+	private String dataSource = ""; // From host grup name.
+	private String dataType = ""; // From item.name, will have statistic if trend.
 	private String dataInterval = ""; // Always IrregSecond?
-	private String dataType = ""; // From item.key.
 	private String dataUnits = ""; // From item.units.
 
 	// Host group data, listed alphabetically.
@@ -100,10 +102,11 @@ public class TimeSeriesCatalog {
 	 * For example, use deepCopy=false when copying a scaled catalog entry for a rated time series.
 	 */
 	public TimeSeriesCatalog ( TimeSeriesCatalog timeSeriesCatalog, boolean deepCopy ) {
-		// List in the same order as internal data member list.
+		// List in the same order as time series identifier.
 		this.locId = timeSeriesCatalog.locId;
-		this.dataInterval = timeSeriesCatalog.dataInterval;
+		this.dataSource = timeSeriesCatalog.dataSource;
 		this.dataType = timeSeriesCatalog.dataType;
+		this.dataInterval = timeSeriesCatalog.dataInterval;
 		this.dataUnits = timeSeriesCatalog.dataUnits;
 
 		// Host group data, listed alphabetically.
@@ -189,6 +192,10 @@ public class TimeSeriesCatalog {
 		return this.dataInterval;
 	}
 
+	public String getDataSource ( ) {
+		return this.dataSource;
+	}
+
 	public String getDataType ( ) {
 		return this.dataType;
 	}
@@ -229,6 +236,37 @@ public class TimeSeriesCatalog {
 	}
 
 	/**
+	 * Get the list of distinct data sources from the catalog.
+	 * @param tscatalogList list of TimeSeriesCatalog to process.
+	 * @return a list of distinct data type strings, sorted alphabetically ignoring case.
+	 */
+	public static List<String> getDistinctDataSources ( List<TimeSeriesCatalog> tscatalogList ) {
+	    List<String> dataSourcesDistinct = new ArrayList<>();
+	    String dataSource;
+	    boolean found;
+	    for ( TimeSeriesCatalog tscatalog : tscatalogList ) {
+	    	// Data source from the catalog, the host group name.
+	    	dataSource = tscatalog.getDataSource();
+	    	if ( dataSource == null ) {
+	    		continue;
+	    	}
+	    	found = false;
+	    	for ( String dataSource2 : dataSourcesDistinct ) {
+	    		if ( dataSource2.equals(dataSource) ) {
+	    			found = true;
+	    			break;
+	    		}
+	    	}
+	    	if ( !found ) {
+	    		// Add to the list of unique data types.
+	    		dataSourcesDistinct.add(dataSource);
+	    	}
+	    }
+	    Collections.sort(dataSourcesDistinct, String.CASE_INSENSITIVE_ORDER);
+	    return dataSourcesDistinct;
+	}
+
+	/**
 	 * Get the list of distinct data types from the catalog.
 	 * @param tscatalogList list of TimeSeriesCatalog to process.
 	 * @return a list of distinct data type strings.
@@ -255,7 +293,44 @@ public class TimeSeriesCatalog {
 	    		dataTypesDistinct.add(dataType);
 	    	}
 	    }
+	    Collections.sort(dataTypesDistinct, String.CASE_INSENSITIVE_ORDER);
 	    return dataTypesDistinct;
+	}
+
+	/**
+	 * Get the list of distinct Location IDs from the catalog.
+	 * @param tscatalogList list of TimeSeriesCatalog to process.
+	 * @param includeNote if true, include a note with the host name
+	 * @return a list of distinct location ID strings.
+	 */
+	public static List<String> getDistinctLocIds ( List<TimeSeriesCatalog> tscatalogList, boolean includeNote ) {
+	    List<String> LocIdsDistinct = new ArrayList<>();
+	    String locId;
+	    boolean found;
+	    for ( TimeSeriesCatalog tscatalog : tscatalogList ) {
+	    	// Data type from the catalog, something like "WaterLevelRiver".
+	    	locId = tscatalog.getLocId();
+	    	if ( locId == null ) {
+	    		continue;
+	    	}
+    		if ( includeNote ) {
+    			// Add the note at the end.
+    			locId = locId + " - " + tscatalog.getHostName();
+    		}
+	    	found = false;
+	    	for ( String locId2 : LocIdsDistinct ) {
+	    		if ( locId2.equals(locId) ) {
+	    			found = true;
+	    			break;
+	    		}
+	    	}
+	    	if ( !found ) {
+	    		// Add to the list of unique data types.
+	    		LocIdsDistinct.add(locId);
+	    	}
+	    }
+	    Collections.sort(LocIdsDistinct, String.CASE_INSENSITIVE_ORDER);
+	    return LocIdsDistinct;
 	}
 
 	/**
@@ -408,6 +483,10 @@ public class TimeSeriesCatalog {
 
 	public void setDataInterval ( String dataInterval ) {
 		this.dataInterval = dataInterval;
+	}
+
+	public void setDataSource ( String dataSource ) {
+		this.dataSource = dataSource;
 	}
 
 	public void setDataType ( String dataType ) {

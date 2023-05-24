@@ -254,7 +254,7 @@ public class Zabbix_TimeSeries_TableModel extends JWorksheet_AbstractRowTableMod
 		switch (col) {
 			// OK to allow null because will be displayed as blank.
 			case COL_LOCATION_ID: return timeSeriesCatalog.getLocId();
-			case COL_DATA_SOURCE: return timeSeriesCatalog.getHostGroupName();
+			case COL_DATA_SOURCE: return timeSeriesCatalog.getDataSource();
 			case COL_DATA_TYPE: return timeSeriesCatalog.getDataType();
 			case COL_DATA_INTERVAL: return timeSeriesCatalog.getDataInterval();
 			case COL_UNITS: return timeSeriesCatalog.getDataUnits();

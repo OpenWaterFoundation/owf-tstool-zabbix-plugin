@@ -9,7 +9,7 @@ This plugin allows Zabbix time series to be listed and read.
 
 This documentation has been updated for:
 
-*   TSTool version 14.9.0
+*   TSTool version 14.8.1
 *   TSTool Zabbix plugin version 1.0.0
 
 ----------------

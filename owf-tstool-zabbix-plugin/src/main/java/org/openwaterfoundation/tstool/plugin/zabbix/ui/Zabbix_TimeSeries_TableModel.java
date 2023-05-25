@@ -24,6 +24,7 @@ package org.openwaterfoundation.tstool.plugin.zabbix.ui;
 
 import java.util.List;
 
+import org.openwaterfoundation.tstool.plugin.zabbix.dao.ItemType;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.TimeSeriesCatalog;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.ValueType;
 import org.openwaterfoundation.tstool.plugin.zabbix.datastore.ZabbixDataStore;
@@ -40,7 +41,7 @@ public class Zabbix_TimeSeries_TableModel extends JWorksheet_AbstractRowTableMod
 	/**
 	Number of columns in the table model.
 	*/
-	private final int COLUMNS = 19;
+	private final int COLUMNS = 23;
 
 	public final int COL_LOCATION_ID = 0;
 	public final int COL_DATA_SOURCE = 1;
@@ -57,17 +58,20 @@ public class Zabbix_TimeSeries_TableModel extends JWorksheet_AbstractRowTableMod
 	public final int COL_HOST_GROUP_NAME = 8;
 	public final int COL_HOST_GROUP_ID = 9;
 
-	public final int COL_ITEM_KEY = 10;
-	//public final int COL_ITEM_NAME = 11;
-	public final int COL_ITEM_ID = 11;
-	public final int COL_ITEM_TYPE = 12;
-	public final int COL_ITEM_UNITS = 13;
-	public final int COL_ITEM_DELAY = 14;
-	public final int COL_ITEM_HISTORY = 15;
-	public final int COL_ITEM_VALUE_TYPE = 16;
+	public final int COL_ITEM_DELAY = 10;
+	public final int COL_ITEM_HISTORY = 11;
+	public final int COL_ITEM_ID = 12;
+	public final int COL_ITEM_KEY = 13;
+	public final int COL_ITEM_STATUS = 14;
+	public final int COL_ITEM_TEMPLATE_ID = 15;
+	public final int COL_ITEM_TEMPLATE_NAME = 16;
+	public final int COL_ITEM_TRENDS = 17;
+	public final int COL_ITEM_TYPE = 18;
+	public final int COL_ITEM_UNITS = 19;
+	public final int COL_ITEM_VALUE_TYPE = 20;
 
-	public final int COL_PROBLEMS = 17;
-	public final int COL_DATASTORE = 18;
+	public final int COL_PROBLEMS = 21;
+	public final int COL_DATASTORE = 22;
 	
 	/**
 	Datastore corresponding to datastore used to retrieve the data.
@@ -138,13 +142,16 @@ public class Zabbix_TimeSeries_TableModel extends JWorksheet_AbstractRowTableMod
 			case COL_HOST_GROUP_NAME: return "Host Group Name";
 			case COL_HOST_GROUP_ID: return "Host Group ID";
 
-			case COL_ITEM_KEY: return "Item Key";
-			//case COL_ITEM_NAME: return "Item Name";
-			case COL_ITEM_ID: return "Item ID";
-			case COL_ITEM_TYPE: return "Item Type";
-			case COL_ITEM_UNITS: return "Item Units";
 			case COL_ITEM_DELAY: return "Item Delay";
 			case COL_ITEM_HISTORY: return "Item History";
+			case COL_ITEM_ID: return "Item ID";
+			case COL_ITEM_KEY: return "Item Key";
+			case COL_ITEM_STATUS: return "Item Status";
+			case COL_ITEM_TEMPLATE_ID: return "Item Template ID";
+			case COL_ITEM_TEMPLATE_NAME: return "Item Template Name";
+			case COL_ITEM_TRENDS: return "Item Trends";
+			case COL_ITEM_TYPE: return "Item Type";
+			case COL_ITEM_UNITS: return "Item Units";
 			case COL_ITEM_VALUE_TYPE: return "Item Value Type";
 
 			case COL_PROBLEMS: return "Problems";
@@ -173,13 +180,16 @@ public class Zabbix_TimeSeries_TableModel extends JWorksheet_AbstractRowTableMod
 	    toolTips[COL_HOST_GROUP_NAME] = "Host group name (hostgroup.name)";
 	    toolTips[COL_HOST_GROUP_ID] = "Host group ID (hostgroup.groupid";
 
-		toolTips[COL_ITEM_KEY] = "Item key (item.key)";
-		//toolTips[COL_ITEM_NAME] = "Item name (item.name)";
+		toolTips[COL_ITEM_DELAY] = "Item delay (item.delay)";
+		toolTips[COL_ITEM_HISTORY] = "Item history duration (item.history)";
 		toolTips[COL_ITEM_ID] = "Item ID (item.itemid)";
+		toolTips[COL_ITEM_KEY] = "Item key (item.key)";
+		toolTips[COL_ITEM_STATUS] = "Item status (item.status, 0=enabled, 1=disabled)";
+		toolTips[COL_ITEM_TEMPLATE_ID] = "Item template ID (item.templateid)";
+		toolTips[COL_ITEM_TEMPLATE_NAME] = "Item template name (from item.templateid)";
+		toolTips[COL_ITEM_TRENDS] = "Item trends save duration (item.trend)";
 		toolTips[COL_ITEM_TYPE] = "Item type (item.type)";
 		toolTips[COL_ITEM_UNITS] = "Item units (item.units)";
-		toolTips[COL_ITEM_DELAY] = "Item delay (item.delay)";
-		toolTips[COL_ITEM_HISTORY] = "Item history (item.history)";
 		toolTips[COL_ITEM_VALUE_TYPE] = "Item value type (item.value_type)";
 
 		toolTips[COL_PROBLEMS] = "Problems";
@@ -206,13 +216,16 @@ public class Zabbix_TimeSeries_TableModel extends JWorksheet_AbstractRowTableMod
 	    widths[COL_HOST_GROUP_NAME] = 25;
 	    widths[COL_HOST_GROUP_ID] = 10;
 
-	    widths[COL_ITEM_KEY] = 10;
-	    //widths[COL_ITEM_NAME] = 30;
-	    widths[COL_ITEM_ID] = 6;
-	    widths[COL_ITEM_TYPE] = 10;
-	    widths[COL_ITEM_UNITS] = 6;
 	    widths[COL_ITEM_DELAY] = 8;
 	    widths[COL_ITEM_HISTORY] = 9;
+	    widths[COL_ITEM_ID] = 6;
+	    widths[COL_ITEM_KEY] = 10;
+	    widths[COL_ITEM_STATUS] = 8;
+	    widths[COL_ITEM_TEMPLATE_ID] = 12;
+	    widths[COL_ITEM_TEMPLATE_NAME] = 15;
+	    widths[COL_ITEM_TRENDS] = 8;
+	    widths[COL_ITEM_TYPE] = 15;
+	    widths[COL_ITEM_UNITS] = 6;
 	    widths[COL_ITEM_VALUE_TYPE] = 10;
 
 		widths[COL_PROBLEMS] = 30;
@@ -266,16 +279,22 @@ public class Zabbix_TimeSeries_TableModel extends JWorksheet_AbstractRowTableMod
 			case COL_HOST_GROUP_NAME: return timeSeriesCatalog.getHostGroupName();
 			case COL_HOST_GROUP_ID: return timeSeriesCatalog.getHostGroupId();
 
-			case COL_ITEM_KEY: return timeSeriesCatalog.getItemKey();
-			case COL_ITEM_ID: return timeSeriesCatalog.getItemId();
-			case COL_ITEM_TYPE: return timeSeriesCatalog.getItemType();
-			case COL_ITEM_UNITS: return timeSeriesCatalog.getItemUnits();
 			case COL_ITEM_DELAY: return timeSeriesCatalog.getItemDelay();
 			case COL_ITEM_HISTORY: return timeSeriesCatalog.getItemHistory();
+			case COL_ITEM_ID: return timeSeriesCatalog.getItemId();
+			case COL_ITEM_KEY: return timeSeriesCatalog.getItemKey();
+			case COL_ITEM_STATUS: return timeSeriesCatalog.getItemStatus();
+			case COL_ITEM_TEMPLATE_ID: return timeSeriesCatalog.getItemTemplateId();
+			case COL_ITEM_TEMPLATE_NAME: return timeSeriesCatalog.getItemTemplateName();
+			case COL_ITEM_TRENDS: return timeSeriesCatalog.getItemTrends();
+			case COL_ITEM_TYPE:
+				ItemType itemType = ItemType.valueOfIgnoreCase(timeSeriesCatalog.getItemType());
+				return itemType.toString() + " (" + timeSeriesCatalog.getItemType() + ")";
+			case COL_ITEM_UNITS: return timeSeriesCatalog.getItemUnits();
 			//case COL_ITEM_NAME: return timeSeriesCatalog.getItemName();
 			case COL_ITEM_VALUE_TYPE:
 				ValueType valueType = ValueType.valueOfIgnoreCase(timeSeriesCatalog.getItemValueType());
-				return valueType.toString();
+				return valueType.toString() + " (" + timeSeriesCatalog.getItemValueType() + ")";
 
 			case COL_PROBLEMS: return timeSeriesCatalog.formatProblems();			
 			case COL_DATASTORE: return this.datastore.getName();			

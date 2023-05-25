@@ -62,6 +62,10 @@ public class TimeSeriesCatalog {
 	private String itemId = "";
 	private String itemKey = "";
 	private String itemName = "";
+	private String itemStatus = "";
+	private String itemTemplateName = "";
+	private String itemTemplateid = "";
+	private String itemTrends = "";
 	private String itemType = "";
 	private String itemUnits = "";
 	private String itemValueType = "";
@@ -127,6 +131,10 @@ public class TimeSeriesCatalog {
 		this.itemId = timeSeriesCatalog.itemId;
 		this.itemKey = timeSeriesCatalog.itemKey;
 		this.itemName = timeSeriesCatalog.itemName;
+		this.itemStatus = timeSeriesCatalog.itemStatus;
+		this.itemTemplateid = timeSeriesCatalog.itemTemplateid;
+		this.itemTemplateName = timeSeriesCatalog.itemTemplateName;
+		this.itemTrends = timeSeriesCatalog.itemTrends;
 		this.itemType = timeSeriesCatalog.itemType;
 		this.itemUnits = timeSeriesCatalog.itemUnits;
 		this.itemValueType = timeSeriesCatalog.itemValueType;
@@ -385,6 +393,26 @@ public class TimeSeriesCatalog {
 		return this.itemName;
 	}
 
+	public String getItemStatus ( ) {
+		return this.itemStatus;
+	}
+
+	/**
+	 * Return the template 
+	 * @return
+	 */
+	public String getItemTemplateName ( ) {
+		return this.itemTemplateName;
+	}
+
+	public String getItemTemplateId ( ) {
+		return this.itemTemplateid;
+	}
+
+	public String getItemTrends ( ) {
+		return this.itemTrends;
+	}
+
 	public String getItemType ( ) {
 		return this.itemType;
 	}
@@ -550,6 +578,18 @@ public class TimeSeriesCatalog {
 		this.itemName = itemName;
 	}
 
+	public void setItemStatus ( String itemStatus ) {
+		this.itemStatus = itemStatus;
+	}
+
+	public void setItemTemplateId ( String itemTemplateid ) {
+		this.itemTemplateid = itemTemplateid;
+	}
+
+	public void setItemTrends ( String itemTrends ) {
+		this.itemTrends = itemTrends;
+	}
+
 	public void setItemType ( String itemType ) {
 		this.itemType = itemType;
 	}
@@ -564,6 +604,38 @@ public class TimeSeriesCatalog {
 
 	public void setLocId ( String locId ) {
 		this.locId = locId;
+	}
+
+	/**
+	 * Set the derived data including template name (from template).
+	 * @param templateList the list of Template to use as input for derived data.
+	 */
+	public void setDerivedData ( List<Template> templateList ) {
+		Template template = Template.lookupTemplateForId(templateList, getItemTemplateId());
+		if ( template != null ) {
+			this.itemTemplateName = template.getName();
+		}
+		else {
+			Message.printStatus(2, "", "Could not find template with ID " + getItemTemplateId() );
+		}
+	}
+
+	/**
+	 * Set the derived data including template name (from template).
+	 * @param tscatalogList the list of TimeSeriesCatalog to process.
+	 * @param templateList the list of Template to use as input for derived data.
+	 */
+	public static void setDerivedData ( List<TimeSeriesCatalog> tscatalogList, List<Template> templateList ) {
+		if ( tscatalogList == null ) {
+			return;
+		}
+		for ( TimeSeriesCatalog tscatalog : tscatalogList ) {
+			tscatalog.setDerivedData( templateList);
+			Template template = Template.lookupTemplateForId(templateList, tscatalog.getItemTemplateId());
+			if ( template != null ) {
+				tscatalog.itemTemplateName = template.getName();
+			}
+		}
 	}
 
 	/**

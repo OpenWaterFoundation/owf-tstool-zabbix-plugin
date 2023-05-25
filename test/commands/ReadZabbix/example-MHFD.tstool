@@ -1,19 +1,19 @@
 # Simple example to graph important system resources.
 #
 # CPU Utilization
-ReadZabbix(DataStore="TriLynxZabbix",DataType="CPU: utilization-Avg",Interval="Hour",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
-ReadZabbix(DataStore="TriLynxZabbix",DataType="CPU: utilization-Min",Interval="Hour",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
-ReadZabbix(DataStore="TriLynxZabbix",DataType="CPU: utilization-Max",Interval="Hour",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
-ReadZabbix(DataStore="TriLynxZabbix",DataType="CPU: utilization",Interval="IrregSecond",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
+ReadZabbix(DataStore="Zabbix-trilynx",DataType="CPU: utilization-Avg",Interval="Hour",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
+ReadZabbix(DataStore="Zabbix-trilynx",DataType="CPU: utilization-Min",Interval="Hour",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
+ReadZabbix(DataStore="Zabbix-trilynx",DataType="CPU: utilization-Max",Interval="Hour",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
+ReadZabbix(DataStore="Zabbix-trilynx",DataType="CPU: utilization",Interval="IrregSecond",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
 #
 # Process graph.
 ProcessTSProduct(TSProductFile="example-MHFD-cpu.tsp")
 #
 # Memory Utilization
-ReadZabbix(DataStore="TriLynxZabbix",DataType="Memory: Utilization-Avg",Interval="Hour",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
-ReadZabbix(DataStore="TriLynxZabbix",DataType="Memory: Utilization-Min",Interval="Hour",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
-ReadZabbix(DataStore="TriLynxZabbix",DataType="Memory: Utilization-Max",Interval="Hour",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
-ReadZabbix(DataStore="TriLynxZabbix",DataType="Memory: Utilization",Interval="IrregSecond",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
+ReadZabbix(DataStore="Zabbix-trilynx",DataType="Memory: Utilization-Avg",Interval="Hour",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
+ReadZabbix(DataStore="Zabbix-trilynx",DataType="Memory: Utilization-Min",Interval="Hour",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
+ReadZabbix(DataStore="Zabbix-trilynx",DataType="Memory: Utilization-Max",Interval="Hour",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
+ReadZabbix(DataStore="Zabbix-trilynx",DataType="Memory: Utilization",Interval="IrregSecond",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
 #
 # Process graph.
 ProcessTSProduct(TSProductFile="example-MHFD-memory.tsp")

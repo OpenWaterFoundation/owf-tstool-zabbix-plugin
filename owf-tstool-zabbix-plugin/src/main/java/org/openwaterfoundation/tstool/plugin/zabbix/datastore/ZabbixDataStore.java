@@ -41,6 +41,7 @@ import org.openwaterfoundation.tstool.plugin.zabbix.dao.History;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.Host;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.HostGroup;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.Item;
+import org.openwaterfoundation.tstool.plugin.zabbix.dao.Template;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.TimeSeriesCatalog;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.Trend;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.UserLogin;
@@ -118,6 +119,11 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 	 * CURRENTLY NOT POPULATED.
 	 */
 	private List<String> globalItemNameList = new ArrayList<>();
+
+	/**
+	 * Global template list.
+	 */
+	private List<Template> globalTemplateList = new ArrayList<>();
 
 	/**
 	 * Global debug option for datastore, used for development and troubleshooting.
@@ -569,7 +575,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 	}
 
 	/**
-	 * Get the "params" host filter JSON for a list of Host.
+	 * Get the "params" filter JSON for a list of items.
 	 *  "filter": {
      *      "host": [
      *          "Zabbix server",
@@ -580,7 +586,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
      * @param propertyName property name to match for filter (e.g., 'host', 'name')
      * @param propertyValueList list of property values to match, or null (or empty) to read all
 	 */
-	private String getParamHostFilter ( boolean addLeadingComma, String propertyName, List<String> propertyValueList ) {
+	private String getParamFilter ( boolean addLeadingComma, String propertyName, List<String> propertyValueList ) {
 		if ( (propertyValueList != null) && (propertyValueList.size() > 0) ) {
 			StringBuilder b = new StringBuilder ( "\"filter\": { \"" + propertyName + "\": [");
 			int i = -1;
@@ -954,10 +960,10 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 
 		try {
 			this.globalHostGroupList = readHostGroupList();
-			Message.printStatus(2, routine, "Initialized " + this.globalHostGroupList.size() + " host groups." );
+			Message.printStatus(2, routine, "Read " + this.globalHostGroupList.size() + " host groups." );
 		}
 		catch ( Exception e ) {
-			Message.printWarning(3, routine, "Error initializing global host group list (" + e + ")");
+			Message.printWarning(3, routine, "Error reading global host group list (" + e + ")");
 			Message.printWarning(3, routine, e );
 		}
 
@@ -965,10 +971,10 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 
 		try {
 			this.globalHostList = readHostList();
-			Message.printStatus(2, routine, "Initialized " + this.globalHostList.size() + " hosts." );
+			Message.printStatus(2, routine, "Read " + this.globalHostList.size() + " hosts." );
 		}
 		catch ( Exception e ) {
-			Message.printWarning(3, routine, "Error initializing global host list (" + e + ")");
+			Message.printWarning(3, routine, "Error reading global host list (" + e + ")");
 			Message.printWarning(3, routine, e );
 		}
 
@@ -987,10 +993,23 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 		}
 		*/
 
-		// Read the global list of history time series:
+		// Read the templates.
+
+		try {
+			this.globalTemplateList = readTemplateList(this.globalHostList);
+			Message.printStatus(2, routine, "Read " + this.globalTemplateList.size() + " templates." );
+		}
+		catch ( Exception e ) {
+			Message.printWarning(3, routine, "Error reading global templates list (" + e + ")");
+			Message.printWarning(3, routine, e );
+		}
+
+		// Read the global list of history and trend time series catalog:
+		// - process after reading other data because may need to use for derived data
 		// - used to look up history time series when reading
 		// - used to create choices for the UI
 		// - TODO smalers need to create a data pyramid to streamline performance
+		// - TODO smalers maybe don't need to create a trend time series catalog list if can do on the fly from the history catalog
 		try {
 			String tsid = null;
     		String dataTypeReq = null;
@@ -1055,6 +1074,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 			Message.printWarning(3, routine, "Error reading global history and trend time series catalog lists (" + e + ")");
 			Message.printWarning(3, routine, e );
 		}
+
 	}
 
     /**
@@ -1130,7 +1150,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 				+ "\"method\": \"host.get\","
 				+ "\"params\": {"
 					+ "\"selectGroups\": \"extend\""
-					+ getParamHostFilter(true, propertyName, propertyValueList)
+					+ getParamFilter(true, propertyName, propertyValueList)
 				+ "},"
 				+ "\"id\": 1"
 				+ getAuthJSON()
@@ -1222,13 +1242,50 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
     }
 
     /**
-     * Red the items matching a host group name and host.
-     * This is called from ReadTimeSeriesCatalog.
+     * Read the template list from the web service.
+     * See (current): https://www.zabbix.com/documentation/current/en/manual/api/reference/template/get
+     * See (5.4):  https://www.zabbix.com/documentation/5.4/en/manual/api/reference/template/get
+     * @param hostList list of hots to read templates
+     * @return the template list, may be an empty list if a problem
      */
-    /*
-    private List<Item> readItemListForHostGroupAndHost ( String hostGroupName, String host ) {
+    private List<Template> readTemplateList ( List<Host> hostList ) {
+		String routine = getClass().getSimpleName() + ".readTemplateList";
+		String requestUrl = getServiceRootURI().toString();
+		// Add filters later, if necessary.
+		String propertyName = "hostids";
+		List<String> propertyValueList = new ArrayList<>();
+		for ( Host host : hostList ) {
+			propertyValueList.add(host.getHostid());
+		}
+		String requestData =
+			"{"
+				+ "\"jsonrpc\": \"2.0\","
+				+ "\"method\": \"template.get\","
+				+ "\"params\": {"
+				+   "\"output\": \"extend\""
+					+ getParamFilter(true, propertyName, propertyValueList)
+				+ "},"
+				+ "\"id\": 1"
+				+ getAuthJSON()
+    		+ "}";
+		String dataElement = "result";  // 'result' contains an array of the objects.
+		Message.printStatus(2, routine, "Reading templates, requestData = " + requestData);
+		try {
+			String templateJson = JacksonToolkit.getInstance().getJsonFromWebServiceUrl ( requestUrl, getApiToken(), requestData, dataElement );
+			List<Template> templates = JacksonToolkit.getInstance().getObjectMapper().readValue(templateJson, new TypeReference<List<Template>>(){});
+			/*
+			for ( Template template : templates ) {
+				Message.printStatus( 2, routine, " templateid=" + template.getTemplateid() + " name=" + template.getName()
+					+ " host=" + template.getHost() );
+			}
+			*/
+			return templates;
+		}
+		catch ( Exception e ) {
+			Message.printWarning(3,routine,e);
+			return new ArrayList<Template>();
+		}
     }
-    */
 
     /**
      * Read a single time series given its time series identifier using default read properties.
@@ -1435,6 +1492,8 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
    		// Set the standard time series properties from the catalog.
     	ts.setDataUnits(tscatalog.getDataUnits());
     	ts.setDataUnitsOriginal(tscatalog.getDataUnits());
+    	// Use the name for the description because the description is multi-line and fouls up legends.
+    	ts.setDescription(host.getName());
     	setTimeSeriesProperties(ts, tscatalog);
 
     	if ( readData ) {
@@ -1947,37 +2006,6 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 				}
 				Message.printStatus(2, routine, "Read " + itemList.size() + " 'item' objects for time series catalog.");
 
-				// Add query parameters based on the input filter:
-				// - this includes list type parameters and specific parameters to match web service values
-				// - TODO smalers 2023-05-18 need to enable input filters for item data
-				/*
-				int numFilterWheres = 0; // Number of filter where clauses that are added.
-				if ( ifp != null ) {
-	        		int nfg = ifp.getNumFilterGroups ();
-	        		InputFilter filter;
-	        		for ( int ifg = 0; ifg < nfg; ifg++ ) {
-	            		filter = ifp.getInputFilter ( ifg );
-	            		//Message.printStatus(2, routine, "IFP whereLabel =\"" + whereLabel + "\"");
-	            		boolean special = false; // TODO smalers 2022-12-26 might add special filters.
-	            		if ( special ) {
-	            		}
-	            		else {
-	            			// Add the query parameter to the URL.
-				    		filter = ifp.getInputFilter(ifg);
-				    		String queryClause = WebUtil.getQueryClauseFromInputFilter(filter,ifp.getOperator(ifg));
-				    		if ( Message.isDebugOn ) {
-				    			Message.printStatus(2,routine,"Filter group " + ifg + " where is: \"" + queryClause + "\"");
-				    		}
-				    		if ( queryClause != null ) {
-				    			requestUrl.append("&" + queryClause);
-				    			++numFilterWheres;
-				    		}
-	            		}
-	        		}
-	        	}
-	        	*/
-				//Message.printStatus(2, routine, "Reading 1+ station time series metadata using:" );
-				//Message.printStatus(2, routine, "  " + requestUrlString);
 			}
 
 			// If here have matching 'Item' to process into TimeSeriesCatalog.
@@ -2027,9 +2055,17 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 				tscatalog.setItemId ( item.getItemid() );
 				tscatalog.setItemKey ( item.getKey() );
 				tscatalog.setItemName ( item.getName() );
+				tscatalog.setItemStatus ( item.getStatus() );
+				tscatalog.setItemTemplateId ( item.getTemplateid() );
+				tscatalog.setItemTrends ( item.getTrends() );
 				tscatalog.setItemType ( item.getType() );
 				tscatalog.setItemUnits ( item.getUnits() );
 				tscatalog.setItemValueType ( item.getValueType() );
+				
+				// Populate derived data that is looked up from other objects:
+				// - for example, item template 'name' from 'templateid'
+				// - TODO smalers 2023-05-25 disable for now since it does not work
+				// tscatalog.setDerivedData ( this.globalTemplateList );
 
 				tscatalogList.add(tscatalog);
 			}

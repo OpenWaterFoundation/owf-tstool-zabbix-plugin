@@ -14,18 +14,20 @@ RightYAxisIgnoreUnits = "false"
 
 [Data 1.1]
 
-TSID = "ud-ns518b.Clients/CO-District-MHFD.'CPU: utilization-Avg'.Hour~TriLynxZabbix"
+TSID = "ud-ns518b.Clients/CO-District-MHFD.'CPU: utilization-Avg'.Hour~Zabbix-trilynx"
+Color = "Red"
 
 [Data 1.2]
 
-TSID = "UD-NS518.Clients/CO-District-MHFD.'CPU: utilization-Avg'.Hour~TriLynxZabbix"
+TSID = "ud-ns518b.Clients/CO-District-MHFD.'CPU: utilization'.IrregSecond~Zabbix-trilynx"
+Color = "Red"
 
 [Data 1.3]
 
-TSID = "ud-ns518b.Clients/CO-District-MHFD.'CPU: utilization'.IrregSecond~TriLynxZabbix"
-Color = "Red"
+TSID = "UD-NS518.Clients/CO-District-MHFD.'CPU: utilization-Avg'.Hour~Zabbix-trilynx"
+Color = "Blue"
 
 [Data 1.4]
 
-TSID = "UD-NS518.Clients/CO-District-MHFD.'CPU: utilization'.IrregSecond~TriLynxZabbix"
+TSID = "UD-NS518.Clients/CO-District-MHFD.'CPU: utilization'.IrregSecond~Zabbix-trilynx"
 Color = "Blue"

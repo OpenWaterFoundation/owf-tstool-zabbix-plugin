@@ -92,6 +92,21 @@ public class Item {
 	private String lastNs = "";
 
 	/**
+	 * Item 'status'.
+	 */
+	private String status = "";
+
+	/**
+	 * Item 'templateid'.
+	 */
+	private String templateid = "";
+
+	/**
+	 * Item 'trends'.
+	 */
+	private String trends = "";
+
+	/**
 	 * Item 'value_type'.
 	 */
 	@JsonProperty("value_type")
@@ -204,6 +219,30 @@ public class Item {
 	 */
 	public String getName () {
 		return this.name;
+	}
+
+	/**
+	 * Return the item status.
+	 * @return the item status
+	 */
+	public String getStatus () {
+		return this.status;
+	}
+
+	/**
+	 * Return the item templateid.
+	 * @return the item templateid
+	 */
+	public String getTemplateid () {
+		return this.templateid;
+	}
+
+	/**
+	 * Return the item trends.
+	 * @return the item trends
+	 */
+	public String getTrends () {
+		return this.trends;
 	}
 
 	/**

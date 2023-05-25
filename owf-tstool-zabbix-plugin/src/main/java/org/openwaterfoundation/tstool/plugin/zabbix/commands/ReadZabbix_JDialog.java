@@ -663,7 +663,7 @@ private void initialize ( JFrame parent, ReadZabbix_Command command ) {
 		"Reading time series for a single location takes precedence over reading multiple time series." ),
 		0, ++y, 7, 1, 0, 0, insetsTLBR, GridBagConstraints.NONE, GridBagConstraints.WEST);
    	JGUIUtil.addComponent(main_JPanel, new JLabel (
-		"Requests may be constrained by the software to prevent unintended large bulk queries." ),
+		"Requests may be automatically constrained by the software to prevent unintended large bulk queries." ),
 		0, ++y, 7, 1, 0, 0, insetsTLBR, GridBagConstraints.NONE, GridBagConstraints.WEST);
 
     // Add buttons for the documentation:
@@ -1054,6 +1054,8 @@ private void populateDataSourceChoices ( ZabbixDataStore datastore ) {
 	// Don't include the SHEF types since they just complicate things.
     List<String> dataSources = datastore.getTimeSeriesDataSourceStrings(getSelectedDataType(),
     	getSelectedDataInterval(), includeWildcards);
+    // Add a blank choice.
+    dataSources.add(0,"");
     __DataSource_JComboBox.setData ( dataSources );
     // Select the default.
     __DataSource_JComboBox.select(0);
@@ -1146,7 +1148,6 @@ private void refresh () {
 	String Interval = "";
 	String DataSource = "";
 	String LocId = "";
-	String TsShortName = "";
 	//String TSID = "";
 	String filterDelim = ";";
 	String InputStart = "";
@@ -1164,7 +1165,6 @@ private void refresh () {
 	    Interval = props.getValue ( "Interval" );
 	    DataSource = props.getValue ( "DataSource" );
 	    LocId = props.getValue ( "LocId" );
-	    TsShortName = props.getValue ( "TsShortName" );
 		Alias = props.getValue ( "Alias" );
 		//TSID = props.getValue ( "TSID" );
 		InputStart = props.getValue ( "InputStart" );
@@ -1406,11 +1406,11 @@ private void refresh () {
 	props = new PropList ( __command.getCommandName() );
     props.add ( "DataStore=" + DataStore );
 	//props.add ( "TSID=" + TSID );
+	if ( (DataSource != null) && !DataSource.isEmpty() ) {
+		props.add ( "DataSource=" + DataSource );
+	}
 	if ( (LocId != null) && !LocId.isEmpty() ) {
 		props.add ( "LocId=" + LocId );
-	}
-	if ( (TsShortName != null) && !TsShortName.isEmpty() ) {
-		props.add ( "TsShortName=" + TsShortName );
 	}
 	if ( (DataType != null) && !DataType.isEmpty() ) {
 		props.add ( "DataType=" + DataType );
@@ -1454,6 +1454,8 @@ private void refresh () {
 	props.add ( "InputEnd=" + InputEnd );
 	TimeZone = __TimeZone_JTextField.getText().trim();
 	props.add ( "TimeZone=" + TimeZone );
+	ShiftTrendToIntervalEnd = __ShiftTrendToIntervalEnd_JComboBox.getSelected();
+	props.add ( "ShiftTrendToIntervalEnd=" + ShiftTrendToIntervalEnd );
 	Debug = __Debug_JComboBox.getSelected();
 	props.add ( "Debug=" + Debug );
 	__command_JTextArea.setText( __command.toString ( props ).trim() );

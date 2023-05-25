@@ -9,6 +9,7 @@
 **Feature release - initial production release.**
 
 *   ![new](new.png) [1.0.0] Initial production release:
+    +   **This version requires TSTool 14.8.1**.
     +   Main TSTool window includes browsing features to list Zabbix time series.
     +   [TSID for Zabbix](../command-ref/TSID/TSID.md) are recognized to read time series with default parameters.
     +   The [`ReadZabbix`](../command-ref/ReadZabbix/ReadZabbix.md) command is provided to automate

@@ -1,0 +1,25 @@
+# Simple example to graph important system resources:
+# - CPU utilization
+# - memory utilization
+# - show precipitation to illustrate when there is data collection load
+#
+# Read precipitation data for Carr Street.
+ReadNovaStar(DataStore="nsdataws-mhfd",DataType="Precip-Total",Interval="1Hour",LocId="100")
+#
+# CPU Utilization
+ReadZabbix(DataStore="Zabbix-trilynx",DataType="CPU: utilization-Avg",Interval="Hour",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
+ReadZabbix(DataStore="Zabbix-trilynx",DataType="CPU: utilization-Min",Interval="Hour",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
+ReadZabbix(DataStore="Zabbix-trilynx",DataType="CPU: utilization-Max",Interval="Hour",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
+ReadZabbix(DataStore="Zabbix-trilynx",DataType="CPU: utilization",Interval="IrregSecond",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
+#
+# Process graph.
+ProcessTSProduct(TSProductFile="example-MHFD-cpu-with-precip.tsp",OutputFile="results/example-MHFD-cpu-with-precip.png")
+#
+# Memory Utilization
+ReadZabbix(DataStore="Zabbix-trilynx",DataType="Memory: Utilization-Avg",Interval="Hour",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
+ReadZabbix(DataStore="Zabbix-trilynx",DataType="Memory: Utilization-Min",Interval="Hour",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
+ReadZabbix(DataStore="Zabbix-trilynx",DataType="Memory: Utilization-Max",Interval="Hour",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
+ReadZabbix(DataStore="Zabbix-trilynx",DataType="Memory: Utilization",Interval="IrregSecond",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
+#
+# Process graph.
+ProcessTSProduct(TSProductFile="example-MHFD-memory-with-precip.tsp",OutputFile="results/example-MHFD-cpu-with-precip.png")

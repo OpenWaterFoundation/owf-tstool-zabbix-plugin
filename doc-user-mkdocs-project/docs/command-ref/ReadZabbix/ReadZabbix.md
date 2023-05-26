@@ -5,6 +5,8 @@
     +   [Match Single Time Series](#match-single-time-series)
     +   [Match 1+ Time Series](#match-1-time-series)
 *   [Command Syntax](#command-syntax)
+    +   [Trend Timestamp Shift](#trend-timestamp-shift)
+    +   [Time Zone Handling](#time-zone-handling)
 *   [Examples](#examples)
 *   [Troubleshooting](#troubleshooting)
 *   [See Also](#see-also)
@@ -122,9 +124,73 @@ Command Parameters
 |All|`Alias`<br>|The alias to assign to the time series, as a literal string or using the special formatting characters listed by the command editor.  The alias is a short identifier used by other commands to locate time series for processing, as an alternative to the time series identifier (`TSID`).|None – alias not assigned.|
 ||`InputStart`|Start of the period to query, specified as a date/time with a precision that matches the requested data interval. The time is in the time zone for the host, or GMT if the host does not have a time zone. |Read all available data.|
 ||`InputEnd`|End of the period to query, specified as a date/time with a precision that matches the requested data interval. The time is in the time zone for the host, or GMT if the host does not have a time zone. |Read all available data.|
-||`TimeZone`| Time zone for output, used when the web services time zone is not the same as that of the host. | Output will use the web service data time zone (GMT). |
-||`ShiftTrendToIntervaEnd`| Zabbix uses a timestamp at the interval start.  TSTool uses a timestamp at the interval end.  This parameter controls how the timestamp is handled for hourly trend data:<ul><li>`False` - trend timestamps are at the beginning of intervals</li><li>`True` - trend timestamps are at the end of interval</li></ul> | `True` (shift to interval end). |
+||`TimeZone`| Time zone for output, used when the web services time zone is not the same as that of the host. See the [Time Zone Handling](#time-zone-handling) section below. | Output will use the web service data time zone (GMT). |
+||`ShiftTrendToIntervaEnd`| Zabbix uses a timestamp at the interval start.  TSTool uses a timestamp at the interval end.  This parameter controls how the timestamp is handled for hourly trend data:<ul><li>`False` - trend timestamps are at the beginning of intervals</li><li>`True` - trend timestamps are at the end of interval</li></ul> See the [Trend Timestamp Shift](#trend-timestamp-shift) section below for more information. | `True` (shift to interval end). |
 ||`Debug`| Used for troubleshooting:  `False` or `True`. | `False` |
+
+### Trend Timestamp Shift ###
+
+Zabbix history data (recent period data) are recorded at the timestamp of the measurement.
+These values are instantaneous measurements that can occur at uneven timestamps and are treated as irregular time series by TSTool.
+
+Zabbix trend data (full period that overlaps the history period) are hourly statistics (`Avg`, `Min`, `Max`)
+that are computed from items with numerical history data.
+Zabbix records trend data using the interval-beginning timestamp (e.g., >= `00:00:00` to < `00:59:59`).
+However, TSTool uses the interval-ending timestamp for interval data (e.g., > `00:00:00` to <= `01:00:00`),
+which is common for data sources that TSTool deals with.
+Consequently, the default behavior for the TSTool Zabbix plugin is to shift trend data timestamps to the end of the hourly interval,
+which has the following impacts:
+
+*   Trend time series from Zabbix will align consistently with other time series data in TSTool,
+    for example hourly precipitation totals.
+*   Using the Zabbix trend data without shift will tend to show hourly peaks before measurements
+    whereas using the detault shift in TSTool will show hourly peaks after measurements.
+*   Zabbix measurements that occurs exactly at second `00` (and nanosecond `0`)
+    will be included in the "next" interval in Zabbix and the "current" interval in TSTool.
+    These occurrances seem to be rare because Zabbix measurements are typically not recorded
+    exactly at second `00`.
+
+The following images illustrate trend data in graphical and tabular form.
+Note that the timestamps shown in the table are typically not exactly on the `00` second and
+therefore the shift will typically impact few measurements.
+
+**<p style="text-align: center;">
+![Trend example graph](trend-example-graph.png)
+</p>**
+
+**<p style="text-align: center;">
+Trend Example Graph (<a href="../trend-example-graph.png">see full-size image)</a>
+</p>**
+
+**<p style="text-align: center;">
+![Trend example table](trend-example-table.png)
+</p>**
+
+**<p style="text-align: center;">
+Trend Example Table (<a href="../trend-example-table.png">see full-size image)</a>
+</p>**
+
+### Time Zone Handling ###
+
+Zabbix stores data in GMT and allows the system to be configured to output in a specific time zone.
+Users can also configure a time zone.
+The time zone results in dashboards displaying the requested time zone.
+
+The Zabbix API only recognizes GMT.
+The `InputStart` and `InputEnd` command parameters use the time zone of the host
+(or GMT if no host time zone ).
+
+For a Zabbix implementation where resources (e.g., computer servers) are located in multiple time zones,
+there is no way to configure Zabbix to show the data for the resource in a specific time zone.
+The TSTool Zabbix plugin allows the host description to have a comment with syntax similar to the following:
+
+```
+// TimeZone=America/Denver
+```
+
+If found (or a different time zone is of interest),
+the plugin will automatically convert data to the specified time zone.
+If the comment is not found, the `TimeZone` parameter for this command can be used to specify the time zone.
 
 ## Examples ##
 

@@ -67,8 +67,10 @@ public class TimeSeriesCatalog {
 	private String itemTemplateid = "";
 	private String itemTrends = "";
 	private String itemType = "";
+	private Integer itemTypeNum = null;
 	private String itemUnits = "";
 	private String itemValueType = "";
+	private Integer itemValueTypeNum = null;
 
 	// List of problems, one string per issue.
 	private List<String> problems = null; // Initialize to null to save memory ... must check elsewhere when using.
@@ -136,8 +138,10 @@ public class TimeSeriesCatalog {
 		this.itemTemplateName = timeSeriesCatalog.itemTemplateName;
 		this.itemTrends = timeSeriesCatalog.itemTrends;
 		this.itemType = timeSeriesCatalog.itemType;
+		this.itemTypeNum = timeSeriesCatalog.itemTypeNum;
 		this.itemUnits = timeSeriesCatalog.itemUnits;
 		this.itemValueType = timeSeriesCatalog.itemValueType;
+		this.itemValueTypeNum = timeSeriesCatalog.itemValueTypeNum;
 
 		if ( deepCopy ) {
 			// Time series catalog problems.
@@ -417,6 +421,10 @@ public class TimeSeriesCatalog {
 		return this.itemType;
 	}
 
+	public Integer getItemTypeNum ( ) {
+		return this.itemTypeNum;
+	}
+
 	public String getItemUnits ( ) {
 		return this.itemUnits;
 	}
@@ -425,9 +433,28 @@ public class TimeSeriesCatalog {
 		return this.itemValueType;
 	}
 
+	public Integer getItemValueTypeNum ( ) {
+		return this.itemValueTypeNum;
+	}
+
 	public String getLocId ( ) {
 		return this.locId;
 	}
+
+    /**
+     * Indicate whether the value type is numeric (float or integer),
+     * which will allow storage in a number.
+     * @return true if the value type is FLOAT or INTEGER and false otherwise.
+     */
+    public boolean isNumeric () {
+    	if ( (this.itemValueTypeNum == ValueType.FLOAT.getCode())
+    		|| (this.itemValueTypeNum == ValueType.INTEGER.getCode()) ) {
+    		return true;
+    	}
+    	else {
+    		return false;
+    	}
+    }
 
 	/**
 	 * Lookup time series catalog using parts from the TSTool main UI and input filters.
@@ -594,12 +621,20 @@ public class TimeSeriesCatalog {
 		this.itemType = itemType;
 	}
 
+	public void setItemTypeNum ( Integer itemTypeNum ) {
+		this.itemTypeNum = itemTypeNum;
+	}
+
 	public void setItemUnits ( String itemUnits ) {
 		this.itemUnits = itemUnits;
 	}
 
 	public void setItemValueType ( String itemValueType ) {
 		this.itemValueType = itemValueType;
+	}
+
+	public void setItemValueTypeNum ( Integer itemValueTypeNum ) {
+		this.itemValueTypeNum = itemValueTypeNum;
 	}
 
 	public void setLocId ( String locId ) {

@@ -68,7 +68,6 @@ import RTi.Util.Help.HelpViewer;
 import RTi.Util.IO.CommandProcessor;
 import RTi.Util.IO.PropList;
 import RTi.Util.Message.Message;
-import RTi.Util.Time.TimeInterval;
 
 /**
 Editor for the ReadZabbix() command.
@@ -95,6 +94,7 @@ private JTextField __InputStart_JTextField;
 private JTextField __InputEnd_JTextField;
 private JTextField __TimeZone_JTextField;
 private SimpleJComboBox __ShiftTrendToIntervalEnd_JComboBox;
+private JTextField __TextValue_JTextField;
 private SimpleJComboBox	__Debug_JComboBox;
 
 private JTextArea __command_JTextArea = null;
@@ -363,6 +363,10 @@ private void checkInput () {
 	if ( ShiftTrendToIntervalEnd.length() > 0 ) {
 		props.set ( "ShiftTrendToIntervalEnd", ShiftTrendToIntervalEnd );
 	}
+	String TextValue = __TextValue_JTextField.getText().trim();
+	if ( TextValue.length() > 0 ) {
+		props.set ( "TextValue", TextValue );
+	}
 	String Debug = __Debug_JComboBox.getSelected();
 	if ( Debug.length() > 0 ) {
 		props.set ( "Debug", Debug );
@@ -416,7 +420,9 @@ private void commitEdits () {
 	String TimeZone = __TimeZone_JTextField.getText().trim();
 	__command.setCommandParameter ( "TimeZone", TimeZone );
 	String ShiftTrendToIntervalEnd = __ShiftTrendToIntervalEnd_JComboBox.getSelected();
-	__command.setCommandParameter (	"ShiftTrendToIntervalEnd", ShiftTrendToIntervalEnd );
+	__command.setCommandParameter ( "ShiftTrendToIntervalEnd", ShiftTrendToIntervalEnd );
+	String TextValue = __TextValue_JTextField.getText().trim();
+	__command.setCommandParameter (	"TextValue", TextValue );
 	String Debug = __Debug_JComboBox.getSelected();
 	__command.setCommandParameter (	"Debug", Debug );
 }
@@ -853,6 +859,17 @@ private void initialize ( JFrame parent, ReadZabbix_Command command ) {
 		"Optional - shift trend data to interval end (default=" + __command._True + ")."),
 		3, y, 2, 1, 0, 0, insetsTLBR, GridBagConstraints.NONE, GridBagConstraints.WEST);
 
+    JGUIUtil.addComponent(main_JPanel, new JLabel ( "Text value:"),
+        0, ++y, 1, 1, 0, 0, insetsTLBR, GridBagConstraints.NONE, GridBagConstraints.EAST);
+    __TextValue_JTextField = new JTextField ( "", 20 );
+    __TextValue_JTextField.setToolTipText( "Numerical value to use for text history items, Text, "
+    	+ "TimeSeriesCount, or TimeSeriesReverseCount, can use ${Property}.");
+    __TextValue_JTextField.addKeyListener ( this );
+    JGUIUtil.addComponent(main_JPanel, __TextValue_JTextField,
+        1, y, 2, 1, 1, 0, insetsTLBR, GridBagConstraints.NONE, GridBagConstraints.WEST);
+    JGUIUtil.addComponent(main_JPanel, new JLabel ( "Optional - number to use for text history items."),
+        3, y, 2, 1, 0, 0, insetsTLBR, GridBagConstraints.NONE, GridBagConstraints.WEST);
+
     JGUIUtil.addComponent(main_JPanel, new JLabel ( "Debug:"),
 		0, ++y, 1, 1, 0, 0, insetsTLBR, GridBagConstraints.NONE, GridBagConstraints.EAST);
     List<String> Debug_List = new ArrayList<>( 3 );
@@ -1154,6 +1171,7 @@ private void refresh () {
 	String InputEnd = "";
 	String TimeZone = "";
 	String ShiftTrendToIntervalEnd = "";
+	String TextValue = "";
 	String Debug = "";
 	PropList props = null;
 	if ( __first_time ) {
@@ -1171,6 +1189,7 @@ private void refresh () {
 		InputEnd = props.getValue ( "InputEnd" );
 		TimeZone = props.getValue ( "TimeZone" );
 		ShiftTrendToIntervalEnd = props.getValue ( "ShiftTrendToIntervalEnd" );
+		TextValue = props.getValue ( "TextValue" );
 		Debug = props.getValue ( "Debug" );
         // The data store list is set up in initialize() but is selected here.
         if ( JGUIUtil.isSimpleJComboBoxItem(__DataStore_JComboBox, DataStore, JGUIUtil.NONE, null, null ) ) {
@@ -1353,6 +1372,9 @@ private void refresh () {
             	__ShiftTrendToIntervalEnd_JComboBox.select (0);
             }
         }
+		if ( TextValue != null ) {
+			__TextValue_JTextField.setText ( TextValue );
+		}
 	    if ( JGUIUtil.isSimpleJComboBoxItem( __Debug_JComboBox, Debug, JGUIUtil.NONE, null, null ) ) {
             //__Debug_JComboBox.select (index[0] );
             __Debug_JComboBox.select (Debug);
@@ -1456,6 +1478,8 @@ private void refresh () {
 	props.add ( "TimeZone=" + TimeZone );
 	ShiftTrendToIntervalEnd = __ShiftTrendToIntervalEnd_JComboBox.getSelected();
 	props.add ( "ShiftTrendToIntervalEnd=" + ShiftTrendToIntervalEnd );
+	TextValue = __TextValue_JTextField.getText().trim();
+	props.add ( "TextValue=" + TextValue );
 	Debug = __Debug_JComboBox.getSelected();
 	props.add ( "Debug=" + Debug );
 	__command_JTextArea.setText( __command.toString ( props ).trim() );

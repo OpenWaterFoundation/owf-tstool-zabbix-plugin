@@ -5,9 +5,9 @@ StartLog(LogFile="results/read-objects.tstool.log")
 # - note that all reads use GET (using POST results in errors)
 #
 # Set the API key from the datastore properties so it can be used below.
-SetPropertyFromDataStore(DataStore="TriLynxZabbix",DataStoreProperty="ApiToken",PropertyName="ZabbixApiToken")
-SetPropertyFromDataStore(DataStore="TriLynxZabbix",DataStoreProperty="SystemLogin",PropertyName="ZabbixUser")
-SetPropertyFromDataStore(DataStore="TriLynxZabbix",DataStoreProperty="SystemPassword",PropertyName="ZabbixPassword")
+SetPropertyFromDataStore(DataStore="Zabbix-trilynx",DataStoreProperty="ApiToken",PropertyName="ZabbixApiToken")
+SetPropertyFromDataStore(DataStore="Zabbix-trilynx",DataStoreProperty="SystemLogin",PropertyName="ZabbixUser")
+SetPropertyFromDataStore(DataStore="Zabbix-trilynx",DataStoreProperty="SystemPassword",PropertyName="ZabbixPassword")
 #
 # User login:
 # - get the Zabbix user and password from the datastore properties
@@ -74,3 +74,12 @@ SetDebugLevel(LogFileLevel="1")
 WebGet(URI="https://zabbix-web.trilynx-novastar.systems/zabbix/api_jsonrpc.php",EncodeURI="False",PayloadFile="results\history-old.json",HttpHeaders="Content-Type:application/json-rpc",LocalFile="results/History.json")
 SetDebugLevel(ScreenLevel="0",LogFileLevel="0")
 NewObject(ObjectID="History",InputFile="results\History.json")
+#
+# History (text):
+# - results are in an array
+# - must specify a filter such as itemids
+TextEdit(InputFile="data\history-old-text.json",SearchFor="INSERT_API_TOKEN",ReplaceWith="${ZabbixApiToken}",OutputFile="results/history-old-text.json")
+SetDebugLevel(LogFileLevel="1")
+WebGet(URI="https://zabbix-web.trilynx-novastar.systems/zabbix/api_jsonrpc.php",EncodeURI="False",PayloadFile="results\history-old-text.json",HttpHeaders="Content-Type:application/json-rpc",LocalFile="results/History-text.json")
+SetDebugLevel(ScreenLevel="0",LogFileLevel="0")
+NewObject(ObjectID="History-text",InputFile="results\History-text.json")

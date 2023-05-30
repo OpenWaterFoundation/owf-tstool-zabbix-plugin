@@ -163,6 +163,14 @@ public enum ItemType {
     }
 
     /**
+     * Return the display name.
+     * @return the display name.
+     */
+    public String getDisplayName () {
+    	return this.displayName;
+    }
+
+    /**
      * Return the display name for the line style type.
      * This is usually the same as the value but using appropriate mixed case.
      * @return the display name.

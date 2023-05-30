@@ -41,10 +41,12 @@ import org.openwaterfoundation.tstool.plugin.zabbix.dao.History;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.Host;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.HostGroup;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.Item;
+import org.openwaterfoundation.tstool.plugin.zabbix.dao.ItemType;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.Template;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.TimeSeriesCatalog;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.Trend;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.UserLogin;
+import org.openwaterfoundation.tstool.plugin.zabbix.dao.ValueType;
 import org.openwaterfoundation.tstool.plugin.zabbix.dto.JacksonToolkit;
 import org.openwaterfoundation.tstool.plugin.zabbix.ui.Zabbix_TimeSeries_CellRenderer;
 import org.openwaterfoundation.tstool.plugin.zabbix.ui.Zabbix_TimeSeries_InputFilter_JPanel;
@@ -677,7 +679,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 			if ( addLeadingComma ) {
 				b.append( ", ");
 			}
-			b.append("\"timefrom\": " + timefrom);
+			b.append("\"time_from\": " + timefrom);
 			return b.toString();
 		}
 		else {
@@ -696,7 +698,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 			if ( addLeadingComma ) {
 				b.append( ", ");
 			}
-			b.append("\"timetill\": " + timetill);
+			b.append("\"time_till\": " + timetill);
 			return b.toString();
 		}
 		else {
@@ -1043,29 +1045,32 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 				}
 				
 				// Create the trend time series catalog:
+				// - only do for numeric item types
 				// - copy the history catalog since most of the data will be the same
 				// - modify the data type to include the statistic at the end
 				// - set the interval to 'Hour'
 
-				// 'Avg' statistic.
-				TimeSeriesCatalog tscatalog2 = new TimeSeriesCatalog(tscatalog);
-				tscatalog2.setDataType(tscatalog.getItemName() + "-Avg");
-				tscatalog2.setDataInterval("Hour");
-				this.globalTrendTscatalogList.add(tscatalog2);
-				// 'Min' statistic.
-				tscatalog2 = new TimeSeriesCatalog(tscatalog);
-				tscatalog2.setDataType(tscatalog.getItemName() + "-Min");
-				tscatalog2.setDataInterval("Hour");
-				this.globalTrendTscatalogList.add(tscatalog2);
-				// 'Max' statistic.
-				tscatalog2 = new TimeSeriesCatalog(tscatalog);
-				tscatalog2.setDataType(tscatalog.getItemName() + "-Max");
-				tscatalog2.setDataInterval("Hour");
-				this.globalTrendTscatalogList.add(tscatalog2);
+				if ( tscatalog.isNumeric() ) {
+					// 'Avg' statistic.
+					TimeSeriesCatalog tscatalog2 = new TimeSeriesCatalog(tscatalog);
+					tscatalog2.setDataType(tscatalog.getItemName() + "-Avg");
+					tscatalog2.setDataInterval("Hour");
+					this.globalTrendTscatalogList.add(tscatalog2);
+					// 'Min' statistic.
+					tscatalog2 = new TimeSeriesCatalog(tscatalog);
+					tscatalog2.setDataType(tscatalog.getItemName() + "-Min");
+					tscatalog2.setDataInterval("Hour");
+					this.globalTrendTscatalogList.add(tscatalog2);
+					// 'Max' statistic.
+					tscatalog2 = new TimeSeriesCatalog(tscatalog);
+					tscatalog2.setDataType(tscatalog.getItemName() + "-Max");
+					tscatalog2.setDataInterval("Hour");
+					this.globalTrendTscatalogList.add(tscatalog2);
+				}
 			}
 
 			Message.printStatus(2, routine, "Read " + this.globalTrendTscatalogList.size()
-				+ " trend time series catalog (3x history catalog)." );
+				+ " trend time series catalog (3x history catalog minus text items)." );
 
 			// Sort the simple lists.
 			Collections.sort(this.globalItemNameList,String.CASE_INSENSITIVE_ORDER);
@@ -1082,11 +1087,12 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
      * See (current): https://www.zabbix.com/documentation/current/en/manual/api/reference/history/get
      * See (5.4):  https://www.zabbix.com/documentation/5.4/en/manual/api/reference/history/get
      * @param itemid itemid to match
-     * @param timeFrom timestamp to start read
-     * @param timeTill timestamp to end read
+     * @param itemValueType the item value type
+     * @param timeFrom timestamp to start read, UNIX epoch seconds
+     * @param timeTill timestamp to end read, UNIX epoch seconds
      * @return the history list, may be an empty list if a problem or no data
      */
-    private List<History> readHistoryList ( String itemid, long timeFrom, long timeTill) {
+    private List<History> readHistoryList ( String itemid, int itemValueType, long timeFrom, long timeTill) {
 		String routine = getClass().getSimpleName() + ".readHistoryList";
 		String requestUrl = getServiceRootURI().toString();
 		List<String> itemidList = new ArrayList<>();
@@ -1097,7 +1103,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 				+ "\"jsonrpc\": \"2.0\","
 				+ "\"method\": \"history.get\","
 				+ "\"params\": {"
-					+ "\"history\": 0,"
+					+ "\"history\": " + itemValueType + ","
 					+ "\"output\": \"extend\","
 					+ "\"sortfield\": \"clock\","
 					+ "\"sortorder\": \"ASC\""
@@ -1320,7 +1326,9 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
      * <li> "Debug" - if true, turn on debug for the query</li>
      * <li> "ShiftTrendToIntervalEnd" - if boolean or String is true, shift trend clock by 3600 seconds to the end of the interval
      *      (Zabbix uses the start of the interval), default value is true</li>
-     * <li> "TimeZone" - the time zone to use for ouput</li>
+     * <li> "TimeZone" - the time zone to use for time series date/times</li>
+     * <li> "TextValue" - the time series numerical value to use when the history time series value is text,
+     *      for example use an integer plotting position</li>
      * </ul>
      * @return the time series or null if not read
      */
@@ -1328,12 +1336,17 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
     	boolean readData, HashMap<String,Object> readProperties ) throws Exception {
     	String routine = getClass().getSimpleName() + ".readTimeSeries";
     	
+    	Message.printStatus(2, routine, "Reading time series \"" + tsidReq + "\" from " + readStart + " to " + readEnd );
+
     	// Set properties for specific functionality.
     	
     	// Default is to use TSTool end of interval time for trend.
     	boolean shiftTrendToIntervalEnd = true;
 
     	String timeZone = null;
+    	Double textValue = null;
+    	// If true, convert the text value to a number.
+    	boolean doTextAsNumber = false;
     	if ( readProperties != null ) {
     		// TODO need to enable debug as temporary setting in this function
     		Object propObject = readProperties.get ( "Debug" );
@@ -1357,6 +1370,28 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
     		propObject = readProperties.get ( "TimeZone" );
     		if ( propObject != null ) {
     			timeZone = (String)propObject;
+    		}
+
+    		propObject = readProperties.get ( "TextValue" );
+    		if ( propObject != null ) {
+    			if ( propObject instanceof String ) {
+    				// Convert the string to a number for the value.
+    				String textValue0 = (String)propObject;
+    				if ( textValue0.equalsIgnoreCase("Text") ) {
+    					doTextAsNumber = true;
+    				}
+    				if ( StringUtil.isDouble(textValue0) ) {
+    					textValue = Double.valueOf(textValue0);
+    				}
+    			}
+    			else if ( propObject instanceof Double ) {
+    				// Double number was passed.
+    				textValue = (Double)propObject;
+    			}
+    			else if ( propObject instanceof Integer ) {
+    				// Integer number was passed.
+    				textValue = new Double((Integer)propObject);
+    			}
     		}
     	}
 
@@ -1458,34 +1493,43 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
     		throw new RuntimeException ( "Unable to match 'tscatalog' for tsid = \"" + tsidReq + "\"." );
     	}
     	
-    	// Get the host object matching the TimeSeriesCcatalog:
-    	// - this is used to check the time zone for output
-    	Host host = Host.lookupHostForId(this.globalHostList, tscatalog.getHostId() );
-    	String hostTimezone = null;
-    	ZoneId hostZoneId = null;
-    	if ( host == null ) {
-   			Message.printStatus(2, routine, "Unable to find cached host ID=" + tscatalog.getHostId() );
+   		// Get the host object matching the TimeSeriesCcatalog:
+   		// - this is used to check the time zone for output
+    	// - it is also used for the time series description
+   		Host host = Host.lookupHostForId(this.globalHostList, tscatalog.getHostId() );
+   		String hostTimeZone = null;
+   		ZoneId hostZoneId = null;
+    	if ( timeZone != null ) {
+    		// Time zone is specified by the calling code, not host description.
+    		hostTimeZone = timeZone;
+			hostZoneId = ZoneId.of(hostTimeZone);
+			Message.printStatus(2, routine, "Time zone from read parameter is \"" + hostTimeZone + "\".");
     	}
     	else {
-    		String description = host.getDescription();
-    		// Parse the description to get embedded properties.
-    		EmbeddedPropertiesString eps = new EmbeddedPropertiesString(description, "//");
-    		hostTimezone = eps.getPropertyValue ( "Timezone" );
-    		if ( hostTimezone == null ) {
-    			// Try the other variation.
-    			hostTimezone = eps.getPropertyValue ( "TimeZone" );
-    		}
-    		if ( hostTimezone == null ) {
-    			Message.printStatus(2, routine, "Host id=" + host.getHostid()
-    				+ " host=\"" + host.getHost() + "\" name=\"" + host.getName()
-    				+ "\" does not specify time zone.  Data will use GMT.");
+    		if ( host == null ) {
+   				Message.printStatus(2, routine, "Unable to find cached host ID=" + tscatalog.getHostId() );
     		}
     		else {
-    			// Have a time zone for the host:
-    			// - get the ZoneId for use below
-    			hostZoneId = ZoneId.of(hostTimezone);
-    			Message.printStatus(2, routine, "Host \"" + host.getHost() + "\" name=\"" + host.getName()
-    				+ "\" uses time zone \"" + hostTimezone + "\".");
+    			String description = host.getDescription();
+    			// Parse the description to get embedded properties.
+    			EmbeddedPropertiesString eps = new EmbeddedPropertiesString(description, "//");
+    			hostTimeZone = eps.getPropertyValue ( "Timezone" );
+    			if ( hostTimeZone == null ) {
+    				// Try the other variation.
+    				hostTimeZone = eps.getPropertyValue ( "TimeZone" );
+    			}
+    			if ( hostTimeZone == null ) {
+    				Message.printStatus(2, routine, "Host id=" + host.getHostid()
+    					+ " host=\"" + host.getHost() + "\" name=\"" + host.getName()
+    					+ "\" does not specify time zone.  Data will use GMT.");
+    			}
+    			else {
+    				// Have a time zone for the host:
+    				// - get the ZoneId for use below
+    				hostZoneId = ZoneId.of(hostTimeZone);
+    				Message.printStatus(2, routine, "Host \"" + host.getHost() + "\" name=\"" + host.getName()
+    					+ "\" uses time zone \"" + hostTimeZone + "\".");
+    			}
     		}
     	}
 
@@ -1506,11 +1550,11 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
     			// - if specified, assumed to be in local time for the host
 				if ( hostZoneId == null ) {
 					// Don't have host time zone so use GMT.
-					timeFrom = TimeUtil.toUnixTime(readStart, true);
+					timeFrom = TimeUtil.toUnixTime(readStart, true)/1000;
 				}
 				else {
 					// Convert the 'readStart' (assumed to be in host time zone) to GMT for the API.
-					readStart.setTimeZone(hostTimezone);
+					readStart.setTimeZone(hostTimeZone);
 					ZonedDateTime readStartHostZone = readStart.toZonedDateTime(null);
 					ZoneId zoneIdGmt = ZoneId.of("GMT");
 					ZonedDateTime readStartGmt = readStartHostZone.withZoneSameInstant(zoneIdGmt);
@@ -1523,27 +1567,37 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
     			// - if specified, assumed to be in local time for the host
 				if ( hostZoneId == null ) {
 					// Don't have host time zone so use GMT.
-					timeTill = TimeUtil.toUnixTime(readEnd, true);
+					timeTill = TimeUtil.toUnixTime(readEnd, true)/1000;
 				}
 				else {
 					// Convert the 'readEnd' (assumed to be in host time zone) to GMT for the API.
-					readEnd.setTimeZone(hostTimezone);
+					readEnd.setTimeZone(hostTimeZone);
 					ZonedDateTime readEndHostZone = readStart.toZonedDateTime(null);
 					ZoneId zoneIdGmt = ZoneId.of("GMT");
 					ZonedDateTime readEndGmt = readEndHostZone.withZoneSameInstant(zoneIdGmt);
-					timeFrom = readEndGmt.toEpochSecond();
+					timeTill = readEndGmt.toEpochSecond();
 				}
     		}
     		if ( readHistory ) {
     			// Reading the history data into an irregular interval time series:
     			// - don't need to allocate memory
-    			List<History> historyList = readHistoryList ( tscatalog.getItemId(), timeFrom, timeTill );
+    			List<History> historyList = readHistoryList (
+    				tscatalog.getItemId(), tscatalog.getItemValueTypeNum(), timeFrom, timeTill );
     			Message.printStatus(2,routine,"Read " + historyList.size() + " history records for timefrom="
     				+ timeFrom + " timetill=" + timeTill + ".");
     			// If any data were returned, add to the time series.
     			double value;
+    			String flag = null;
     			History history = null;
     			DateTime dt = null;
+
+    			// Check whether the item provides a numerical value:
+    			// - if so, then the time series value will contain the item value
+    			// - if not, the flag will contain the item value
+    			boolean isItemNumeric = tscatalog.isNumeric();
+    			double missingValue = ts.getMissing();
+    			
+    			// Loop through the records and add the data to the time series.
     			if ( historyList.size() > 0 ) {
     				// Set the period:
     				// - note that 'clock' is seconds but TimeUtil.fromUnixTime() accepts ms.
@@ -1553,11 +1607,13 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
     				long clockStart = Long.parseLong(historyList.get(0).getClock());
     				long clockEnd = Long.parseLong(historyList.get(historyList.size() - 1).getClock());
 					if ( hostZoneId == null ) {
-						// Adjust the time zone.
+						// Leave the host time zone as GMT:
+						// - the following takes milliseconds
 						dataStart = TimeUtil.fromUnixTime(clockStart*1000, null);
 						dataEnd = TimeUtil.fromUnixTime(clockEnd*1000, null);
 					}
 					else {
+						// Adjust the time zone from GMT to the host time zone.
     					zonedDateTime = Instant.ofEpochMilli(clockStart*1000).atZone(hostZoneId);
    						dataStart = new DateTime(zonedDateTime, DateTime.PRECISION_SECOND, hostZoneId.toString());
     					zonedDateTime = Instant.ofEpochMilli(clockEnd*1000).atZone(hostZoneId);
@@ -1571,36 +1627,65 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
     				ts.setDate2(dataEnd);
     				ts.setDate2Original(dataEnd);
     				for ( int i = 0; i < historyList.size(); i++ ) {
-    					history = historyList.get(i);
-    					long clock = Long.parseLong(history.getClock());
-    					value = Double.parseDouble(history.getValue());
-   						if ( hostZoneId == null ) {
-   							// Using GMT so can directly work with DateTime.
-   							if ( i == 0 ) {
-   								// Create the DateTime the first time.
-   								dt = TimeUtil.fromUnixTime(clock*1000, null);
-   								dt.setPrecision(DateTime.PRECISION_SECOND);
+    					try {
+    						history = historyList.get(i);
+    						long clock = Long.parseLong(history.getClock());
+   							if ( hostZoneId == null ) {
+   								// Using GMT so can directly work with DateTime.
+   								if ( i == 0 ) {
+   									// Create the DateTime the first time.
+   									dt = TimeUtil.fromUnixTime(clock*1000, null);
+   									dt.setPrecision(DateTime.PRECISION_SECOND);
+   								}
+   								else {
+   									// Reuse the same DateTime.
+   									TimeUtil.fromUnixTime(clock*1000, dt);
+   								}
    							}
    							else {
-   								// Reuse the same DateTime.
-   								TimeUtil.fromUnixTime(clock*1000, dt);
+    							// Host time zone is specified (e.g., "America/Denver"):
+    							// - the legacy DateTime.shiftTimeZone() does not yet handle new java.time
+    							// - therefore use ZonedDateTime to convert to the desired time zone.
+   								// - this is slower because a new DateTime instance is created for each value
+    							zonedDateTime = Instant.ofEpochMilli(clock*1000).atZone(hostZoneId);
+   								dt = new DateTime(zonedDateTime, DateTime.PRECISION_SECOND, hostZoneId.toString());
+    						}
+   							if ( isItemNumeric ) {
+   								// Set the numeric value without a flag (since flag is not used).
+   								value = Double.parseDouble(history.getValue());
+    							ts.setDataValue(dt, value);
+   							}
+   							else {
+   								// Set the text value as the flag:
+   								// - TODO smalers 2023-05-26 perhaps there is a numerical value that makes sense,
+   								//   like a constant or a lookup from the text value.
+   								if ( doTextAsNumber ) {
+   									// Convert the text value to a number.
+   									value = Double.parseDouble(history.getValue());
+   								}
+   								else if ( textValue != null ) {
+   									// Use the provided value.
+   									value = textValue;
+   								}
+   								else {
+   									// Use the time series missing value.
+   									value = missingValue;
+   								}
+   								flag = history.getValue();
+    							ts.setDataValue(dt, value, flag, 0);
    							}
    						}
-   						else {
-    						// Host time zone is specified (e.g., "America/Denver"):
-    						// - the legacy DateTime.shiftTimeZone() does not yet handle new java.time
-    						// - therefore use ZonedDateTime to convert to the desired time zone.
-   							// - this is slower because a new DateTime instance is created for each value
-    						zonedDateTime = Instant.ofEpochMilli(clock*1000).atZone(hostZoneId);
-   							dt = new DateTime(zonedDateTime, DateTime.PRECISION_SECOND, hostZoneId.toString());
+    					catch ( Exception e ) {
+    						// Should not happen:
+    						// - catch exceptions so that only bad values are ignored
     					}
-    					ts.setDataValue(dt, value);
     				}
     			}
     		}
     		else if ( readTrend ) {
-    			// Reading the history data into an irregular interval time series:
+    			// Reading the trend data into a hour interval time series:
     			// - allocate based on the records that are returned
+    			// - all trend data are numeric
     			List<Trend> trendList = readTrendList ( tscatalog.getItemId(), timeFrom, timeTill );
     			Message.printStatus(2,routine,"Read " + trendList.size() + " trend records for timefrom="
     				+ timeFrom + " timetill=" + timeTill + ".");
@@ -1655,42 +1740,48 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
     				ts.setDate2Original(dataEnd);
     				ts.allocateDataSpace();
     				for ( int i = 0; i < trendList.size(); i++ ) {
-    					trend = trendList.get(i);
-    					long clock = Long.parseLong(trend.getClock());
-    					if ( shiftTrendToIntervalEnd ) {
-    						// Zabbix returns timestamp at interval start.  Shift to interval end consistent with TSTool.
-    						clock += 3600;
-    					}
-    					if ( valueStat < 0 ) {
-    						value = Double.parseDouble(trend.getValueMin());
-    					}
-    					else if ( valueStat == 0 ) {
-    						value = Double.parseDouble(trend.getValueAvg());
-    					}
-    					else if ( valueStat == 1 ) {
-    						value = Double.parseDouble(trend.getValueMax());
-    					}
-   						if ( hostZoneId == null ) {
-   							// Using GMT so can directly work with DateTime.
-   							if ( i == 0 ) {
-   								// Create the DateTime the first time.
-   								dt = TimeUtil.fromUnixTime(clock*1000, null);
-   								dt.setPrecision(DateTime.PRECISION_SECOND);
+    					try {
+    						trend = trendList.get(i);
+    						long clock = Long.parseLong(trend.getClock());
+    						if ( shiftTrendToIntervalEnd ) {
+    							// Zabbix returns timestamp at interval start.  Shift to interval end consistent with TSTool.
+    							clock += 3600;
+    						}
+    						if ( valueStat < 0 ) {
+    							value = Double.parseDouble(trend.getValueMin());
+    						}
+    						else if ( valueStat == 0 ) {
+    							value = Double.parseDouble(trend.getValueAvg());
+    						}
+    						else if ( valueStat == 1 ) {
+    							value = Double.parseDouble(trend.getValueMax());
+    						}
+   							if ( hostZoneId == null ) {
+   								// Using GMT so can directly work with DateTime.
+   								if ( i == 0 ) {
+   									// Create the DateTime the first time.
+   									dt = TimeUtil.fromUnixTime(clock*1000, null);
+   									dt.setPrecision(DateTime.PRECISION_SECOND);
+   								}
+   								else {
+   									// Reuse the same DateTime.
+   									TimeUtil.fromUnixTime(clock*1000, dt);
+   								}
    							}
    							else {
-   								// Reuse the same DateTime.
-   								TimeUtil.fromUnixTime(clock*1000, dt);
-   							}
-   						}
-   						else {
-    						// Host time zone is specified (e.g., "America/Denver"):
-    						// - the legacy DateTime.shiftTimeZone() does not yet handle new java.time
-    						// - therefore use ZonedDateTime to convert to the desired time zone.
-   							// - this is slower because a new DateTime instance is created for each value
-    						zonedDateTime = Instant.ofEpochMilli(clock*1000).atZone(hostZoneId);
-   							dt = new DateTime(zonedDateTime, DateTime.PRECISION_SECOND, hostZoneId.toString());
+    							// Host time zone is specified (e.g., "America/Denver"):
+    							// - the legacy DateTime.shiftTimeZone() does not yet handle new java.time
+    							// - therefore use ZonedDateTime to convert to the desired time zone.
+   								// - this is slower because a new DateTime instance is created for each value
+    							zonedDateTime = Instant.ofEpochMilli(clock*1000).atZone(hostZoneId);
+   								dt = new DateTime(zonedDateTime, DateTime.PRECISION_SECOND, hostZoneId.toString());
+    						}
+    						ts.setDataValue(dt, value);
     					}
-    					ts.setDataValue(dt, value);
+    					catch ( Exception e ) {
+    						// Should not happen:
+    						// - catch exceptions so that only bad values are ignored
+    					}
     				}
     			}
     		}
@@ -2058,9 +2149,29 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 				tscatalog.setItemStatus ( item.getStatus() );
 				tscatalog.setItemTemplateId ( item.getTemplateid() );
 				tscatalog.setItemTrends ( item.getTrends() );
-				tscatalog.setItemType ( item.getType() );
+				ItemType itemType = ItemType.valueOfIgnoreCase(item.getType());
+				if ( itemType == null ) {
+					// Set to the number (as a String).
+					tscatalog.setItemType ( item.getType() );
+				}
+				else {
+					// Set to the name.
+					tscatalog.setItemType ( itemType.getDisplayName() );
+					// Also set the number.
+					tscatalog.setItemTypeNum ( itemType.getCode() );
+				}
 				tscatalog.setItemUnits ( item.getUnits() );
-				tscatalog.setItemValueType ( item.getValueType() );
+				ValueType itemValueType = ValueType.valueOfIgnoreCase(item.getValueType());
+				if ( itemValueType == null ) {
+					// Set to the number (as a String).
+					tscatalog.setItemValueType ( item.getValueType() );
+				}
+				else {
+					// Set to the name.
+					tscatalog.setItemValueType ( itemValueType.getDisplayName() );
+					// Also set the number.
+					tscatalog.setItemValueTypeNum ( itemValueType.getCode() );
+				}
 				
 				// Populate derived data that is looked up from other objects:
 				// - for example, item template 'name' from 'templateid'
@@ -2102,8 +2213,8 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
      * See (current): https://www.zabbix.com/documentation/current/en/manual/api/reference/trend/get
      * See (5.4):  https://www.zabbix.com/documentation/5.4/en/manual/api/reference/trend/get
      * @param itemid itemid to match
-     * @param timeFrom timestamp to start read
-     * @param timeTill timestamp to end read
+     * @param timeFrom timestamp to start read, UNIX epoch time seconds
+     * @param timeTill timestamp to end read, UNIX epoch time seconds
      * @return the trend list, may be an empty list if a problem or no data
      */
     private List<Trend> readTrendList ( String itemid, long timeFrom, long timeTill) {
@@ -2215,23 +2326,26 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 
     	// Host group data, listed alphabetically.
 	   	ts.setProperty("hostgroup.hostgroupid", tscatalog.getHostGroupId() );
-	   	ts.setProperty("hostgroup.name", tscatalog.getHostGroupId() );
+	   	ts.setProperty("hostgroup.name", tscatalog.getHostGroupName() );
 
 	   	// Host data, listed alphabetically.
 	   	//private Double stationLatitude = null;
 	   	//private Double stationLongitude = null;
-	   	ts.setProperty("host.description", tscatalog.getHostGroupId() );
-	   	ts.setProperty("host.hostid", tscatalog.getHostGroupId() );
-	   	ts.setProperty("host.name", tscatalog.getHostGroupId() );
+	   	ts.setProperty("host.description", tscatalog.getHostDescription() );
+	   	ts.setProperty("host.hostid", tscatalog.getHostId() );
+	   	ts.setProperty("host.name", tscatalog.getHostName() );
 
 	   	// Item data, listed alphabetically.
-	   	ts.setProperty("item.delay", tscatalog.getHostGroupId() );
-	   	ts.setProperty("item.history", tscatalog.getHostGroupId() );
-	   	ts.setProperty("item.itemid", tscatalog.getHostGroupId() );
-	   	ts.setProperty("item.key", tscatalog.getHostGroupId() );
-	   	ts.setProperty("item.name", tscatalog.getHostGroupId() );
-	   	ts.setProperty("item.units", tscatalog.getHostGroupId() );
-	   	ts.setProperty("item.valuetype", tscatalog.getHostGroupId() );
+	   	ts.setProperty("item.delay", tscatalog.getItemDelay() );
+	   	ts.setProperty("item.history", tscatalog.getItemHistory() );
+	   	ts.setProperty("item.itemid", tscatalog.getItemId() );
+	   	ts.setProperty("item.key", tscatalog.getItemKey() );
+	   	ts.setProperty("item.name", tscatalog.getItemName() );
+	   	ts.setProperty("item.units", tscatalog.getItemUnits() );
+	   	ts.setProperty("item.type", tscatalog.getItemType() );
+	   	ts.setProperty("item.typenum", tscatalog.getItemTypeNum() );
+	   	ts.setProperty("item.valuetype", tscatalog.getItemValueType() );
+	   	ts.setProperty("item.valuetypenum", tscatalog.getItemValueTypeNum() );
     }
 
 }

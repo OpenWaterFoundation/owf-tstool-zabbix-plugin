@@ -107,11 +107,12 @@ throws InvalidCommandParameterException {
 
     String DataStore = parameters.getValue ( "DataStore" );
     String DataType = parameters.getValue ( "DataType" );
-    //String Interval = parameters.getValue ( "Interval" );
+    String Interval = parameters.getValue ( "Interval" );
     String LocId = parameters.getValue ( "LocId" );
     String InputStart = parameters.getValue ( "InputStart" );
     String InputEnd = parameters.getValue ( "InputEnd" );
     String ShiftTrendToIntervalEnd = parameters.getValue ( "ShiftTrendToIntervalEnd" );
+    String TextValue = parameters.getValue ( "TextValue" );
     String Debug = parameters.getValue ( "Debug" );
     String InputFiltersCheck = parameters.getValue ( "InputFiltersCheck" ); // Passed in from the editor, not an actual parameter.
     String Where1 = parameters.getValue ( "Where1" );
@@ -167,6 +168,30 @@ throws InvalidCommandParameterException {
            status.addToLog ( CommandPhaseType.INITIALIZATION,
                new CommandLogRecord(CommandStatusType.FAILURE,
                    message, "Specify " + _False + " or " + _True + " (default).") );
+	}
+
+	if ( (TextValue != null) && !TextValue.equals("") ) {
+		if ( !StringUtil.isDouble(TextValue) &&
+			!TextValue.equalsIgnoreCase("Text") &&
+			!TextValue.equalsIgnoreCase("TimeSeriesCount") &&
+			!TextValue.equalsIgnoreCase("TimeSeriesReverseCount") ) {
+			message = "The TextValue parameter value (" + TextValue + ") is invalid.";
+			warning += "\n" + message;
+			status.addToLog ( CommandPhaseType.INITIALIZATION,
+                new CommandLogRecord(CommandStatusType.FAILURE,
+                    message, "Specify a number, Text, TimeSeriesCount, or TimeSeriesReverseCount.") );
+		}
+		// Should only be specified when Interval is not Hour.
+		if ( Interval.equalsIgnoreCase("IrregSecond") || Interval.equals("*") ) {
+        	// OK.
+        }
+        else {
+        	message = "The TextValue parameter should not be specified for trend (Hour) time series.";
+			warning += "\n" + message;
+           	status.addToLog ( CommandPhaseType.INITIALIZATION,
+               	new CommandLogRecord(CommandStatusType.FAILURE,
+                   	message, "Unset the TextValue parameter or use with history (IrregSecond) time series.") );
+        }
 	}
 
 	if ( (Debug != null) && !Debug.equals("") &&
@@ -266,6 +291,7 @@ throws InvalidCommandParameterException {
     validList.add ( "InputEnd" );
     validList.add ( "TimeZone" );
     validList.add ( "ShiftTrendToIntervalEnd" );
+    validList.add ( "TextValue" );
     validList.add ( "Debug" );
     warning = TSCommandProcessorUtil.validateParameterNames ( validList, this, warning );
 
@@ -281,16 +307,35 @@ throws InvalidCommandParameterException {
 
 /**
  * Create properties for reading time series.
+ * @param its time series position (1+)
+ * @param itsReverse time series reverse position (1+)
  * @param timezone time zone to be used for response, important for interval calculations
- * @param shiftTrendToIntervalEnd whether to shift trend timesteamps to the interval end
+ * @param shiftTrendToIntervalEnd whether to shift trend timestamps to the interval end
+ * @param textValue number to use for text values
  * @param debug whether to run web service queries in debug
  */
-private HashMap<String,Object> createReadProperties ( String timezone, boolean shiftTrendToIntervalEnd, boolean debug ) {
+private HashMap<String,Object> createReadProperties ( int its, int itsReverse,
+	String timezone, boolean shiftTrendToIntervalEnd,
+	String textValue, boolean debug ) {
 	HashMap<String,Object> readProperties = new HashMap<>();
 	if ( (timezone != null) && !timezone.isEmpty() ) {
 		readProperties.put("TimeZone", timezone );
 	}
 	readProperties.put("ShiftTrendToIntervalEnd", new Boolean(shiftTrendToIntervalEnd) );
+	if ( (textValue != null) && !textValue.isEmpty() ) {
+		if ( textValue.equalsIgnoreCase("TimeSeriesCount") ) {
+			// Set the value as the count of time series (1+).
+			readProperties.put("TextValue", "" + its );
+		}
+		else if ( textValue.equalsIgnoreCase("TimeSeriesReverseCount") ) {
+			// Set the value as the count of time series (1+).
+			readProperties.put("TextValue", "" + itsReverse );
+		}
+		else {
+			// Pass through to let the read code handle.
+			readProperties.put("TextValue", textValue );
+		}
+	}
 	if ( debug ) {
 		readProperties.put("Debug", new Boolean(true) );
 	}
@@ -417,17 +462,26 @@ throws InvalidCommandParameterException, CommandWarningException, CommandExcepti
 	}
 	String InputStart = parameters.getValue("InputStart");
 	if ( (InputStart == null) || InputStart.isEmpty() ) {
+		// Set to property to get global value below.
 		InputStart = "${InputStart}";
 	}
     String InputEnd = parameters.getValue("InputEnd");
 	if ( (InputEnd == null) || InputEnd.isEmpty() ) {
+		// Set to property to get global value below.
 		InputEnd = "${InputEnd}";
 	}
 	String TimeZone = parameters.getValue ("TimeZone" );
+	if ( commandPhase == CommandPhaseType.RUN ) {
+	    TimeZone = TSCommandProcessorUtil.expandParameterValue(getCommandProcessor(), this, TimeZone);
+	}
 	String ShiftTrendToIntervalEnd = parameters.getValue ("ShiftTrendToIntervalEnd" );
 	boolean shiftTrendToIntervalEnd = true; // Default
 	if ( (ShiftTrendToIntervalEnd != null) && ShiftTrendToIntervalEnd.equalsIgnoreCase(_False) ) {
 		shiftTrendToIntervalEnd = false;
+	}
+	String TextValue = parameters.getValue ("TextValue" );
+	if ( commandPhase == CommandPhaseType.RUN ) {
+	    TextValue = TSCommandProcessorUtil.expandParameterValue(getCommandProcessor(), this, TextValue);
 	}
 	String Debug = parameters.getValue ("Debug" );
 	boolean debug = false; // Default
@@ -437,6 +491,7 @@ throws InvalidCommandParameterException, CommandWarningException, CommandExcepti
 
     DateTime InputStart_DateTime = null;
     DateTime InputEnd_DateTime = null;
+	Message.printStatus(2, routine, "Command phase is " + commandPhase );
 	if ( commandPhase == CommandPhaseType.RUN ) {
 		try {
 			InputStart_DateTime = TSCommandProcessorUtil.getDateTime ( InputStart, "InputStart", processor,
@@ -454,6 +509,8 @@ throws InvalidCommandParameterException, CommandWarningException, CommandExcepti
 			// Warning will have been added above.
 			++warning_count;
 		}
+		Message.printStatus(2, routine, "From processor, InputStart_DateTime=" + InputStart_DateTime
+			+ " InputEnd_DateTime=" + InputEnd_DateTime);
 	}
 
 	if ( warning_count > 0 ) {
@@ -520,7 +577,12 @@ throws InvalidCommandParameterException, CommandWarningException, CommandExcepti
 				Message.printStatus ( 2, routine, "Reading a single Zabbix web service time series \"" + TSID + "\"" );
 				TS ts = null;
 				try {
-					HashMap<String,Object> readProperties = createReadProperties ( TimeZone, shiftTrendToIntervalEnd, debug );
+					// Time series position is not used.
+					int its = -1;
+					int itsReverse = -1;
+					HashMap<String,Object> readProperties = createReadProperties ( its, itsReverse,
+						TimeZone, shiftTrendToIntervalEnd,
+						TextValue, debug );
 	                ts = dataStore.readTimeSeries ( TSID, InputStart_DateTime, InputEnd_DateTime, readData, readProperties );
 				}
 				catch ( Exception e ) {
@@ -653,8 +715,15 @@ throws InvalidCommandParameterException, CommandWarningException, CommandExcepti
 				String tsidentString = null; // TSIdent string.
 				TS ts; // Time series to read.
 				TimeSeriesCatalog tsCatalog;
-				HashMap<String,Object> readProperties = createReadProperties ( TimeZone, shiftTrendToIntervalEnd, debug );
-				for ( int i = 0; i < size; i++ ) {
+				HashMap<String,Object> readProperties = null;
+				if ( (TextValue != null) || StringUtil.isDouble(TextValue) ) {
+					// Can use the same read properties for all time series.
+					int its = -1;
+					int itsReverse = -1;
+					readProperties = createReadProperties ( its, itsReverse,
+						TimeZone, shiftTrendToIntervalEnd, TextValue, debug );
+				}
+				for ( int its = 0; its < size; its++ ) {
 					// Check to see if reading time series should be canceled because the command has been canceled.
 					if ( tsprocessor.getCancelProcessingRequested() ) {
 						// The user has requested that command processing should be canceled.
@@ -664,12 +733,12 @@ throws InvalidCommandParameterException, CommandWarningException, CommandExcepti
 					}
 					// List in order of likelihood to improve performance.
 					tsidentString = null; // Do this in case there is no active match.
-					tsCatalog = (TimeSeriesCatalog)tsCatalogList.get(i);
+					tsCatalog = (TimeSeriesCatalog)tsCatalogList.get(its);
 					String locId = dataStore.escapeTsidPart(tsCatalog.getLocId());
 					String dataSource = dataStore.escapeTsidPart(tsCatalog.getDataSource());
-					String dataType = "";
 					// Data type is from the catalog (not the original data type).
-					String dataTypeFromCatalog = "yyy"; //tsCatalog.getStationParameterNo();
+					String dataTypeFromCatalog = tsCatalog.getDataType();
+					String dataType = dataTypeFromCatalog;
 					if ( (dataTypeFromCatalog != null) && !dataTypeFromCatalog.isEmpty() && !dataTypeFromCatalog.equals("*") ) {
 						dataType = dataStore.escapeTsidPart(dataTypeFromCatalog);
 					}
@@ -684,13 +753,18 @@ throws InvalidCommandParameterException, CommandWarningException, CommandExcepti
 						+ "." + dataType
 						+ "." + interval;
 		            // Update the progress.
-					message = "Reading Zabbix web service time series " + (i + 1) + " of " + size + " \"" + tsidentString + "\"";
-	                notifyCommandProgressListeners ( i, size, (float)-1.0, message );
+					message = "Reading Zabbix web service time series " + (its + 1) + " of " + size + " \"" + tsidentString + "\"";
+	                notifyCommandProgressListeners ( its, size, (float)-1.0, message );
 					try {
+						// Read properties needs to be regenerated for each time series.
+						readProperties = createReadProperties ( (its + 1), (size - its),
+							TimeZone, shiftTrendToIntervalEnd, TextValue, debug );
 					    ts = dataStore.readTimeSeries (
 							tsidentString,
 							InputStart_DateTime,
-							InputEnd_DateTime, readData, readProperties );
+							InputEnd_DateTime,
+							readData,
+							readProperties );
 						// Add the time series to the temporary list.  It will be further processed below.
 		                if ( (ts != null) && (Alias != null) && !Alias.equals("") ) {
 		                    ts.setAlias ( TSCommandProcessorUtil.expandTimeSeriesMetadataString(
@@ -829,6 +903,7 @@ public String toString ( PropList parameters ) {
 		"InputEnd",
     	"TimeZone",
     	"ShiftTrendToIntervalEnd",
+    	"TextValue",
 		"Debug",
 	};
 

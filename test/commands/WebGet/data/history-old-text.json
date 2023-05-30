@@ -1,0 +1,15 @@
+{
+    "jsonrpc": "2.0",
+    "method": "history.get",
+    "params": {
+        "history": 4,
+        "output": "extend",
+        "sortfield": "clock",
+        "sortorder": "ASC",
+        "itemids": [
+            "34142"
+        ]
+    },
+    "id": 1,
+    "auth": "INSERT_API_TOKEN"
+}

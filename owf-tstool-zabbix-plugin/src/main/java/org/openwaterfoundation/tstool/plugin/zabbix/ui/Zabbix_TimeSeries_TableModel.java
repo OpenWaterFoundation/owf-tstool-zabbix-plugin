@@ -24,9 +24,7 @@ package org.openwaterfoundation.tstool.plugin.zabbix.ui;
 
 import java.util.List;
 
-import org.openwaterfoundation.tstool.plugin.zabbix.dao.ItemType;
 import org.openwaterfoundation.tstool.plugin.zabbix.dao.TimeSeriesCatalog;
-import org.openwaterfoundation.tstool.plugin.zabbix.dao.ValueType;
 import org.openwaterfoundation.tstool.plugin.zabbix.datastore.ZabbixDataStore;
 
 import RTi.Util.GUI.JWorksheet_AbstractRowTableModel;
@@ -41,7 +39,7 @@ public class Zabbix_TimeSeries_TableModel extends JWorksheet_AbstractRowTableMod
 	/**
 	Number of columns in the table model.
 	*/
-	private final int COLUMNS = 23;
+	private final int COLUMNS = 25;
 
 	public final int COL_LOCATION_ID = 0;
 	public final int COL_DATA_SOURCE = 1;
@@ -67,11 +65,13 @@ public class Zabbix_TimeSeries_TableModel extends JWorksheet_AbstractRowTableMod
 	public final int COL_ITEM_TEMPLATE_NAME = 16;
 	public final int COL_ITEM_TRENDS = 17;
 	public final int COL_ITEM_TYPE = 18;
-	public final int COL_ITEM_UNITS = 19;
-	public final int COL_ITEM_VALUE_TYPE = 20;
+	public final int COL_ITEM_TYPE_NUM = 19;
+	public final int COL_ITEM_UNITS = 20;
+	public final int COL_ITEM_VALUE_TYPE = 21;
+	public final int COL_ITEM_VALUE_TYPE_NUM = 22;
 
-	public final int COL_PROBLEMS = 21;
-	public final int COL_DATASTORE = 22;
+	public final int COL_PROBLEMS = 23;
+	public final int COL_DATASTORE = 24;
 	
 	/**
 	Datastore corresponding to datastore used to retrieve the data.
@@ -151,8 +151,10 @@ public class Zabbix_TimeSeries_TableModel extends JWorksheet_AbstractRowTableMod
 			case COL_ITEM_TEMPLATE_NAME: return "Item Template Name";
 			case COL_ITEM_TRENDS: return "Item Trends";
 			case COL_ITEM_TYPE: return "Item Type";
+			case COL_ITEM_TYPE_NUM: return "Item Type Number";
 			case COL_ITEM_UNITS: return "Item Units";
 			case COL_ITEM_VALUE_TYPE: return "Item Value Type";
+			case COL_ITEM_VALUE_TYPE_NUM: return "Item Value Type Number";
 
 			case COL_PROBLEMS: return "Problems";
 			case COL_DATASTORE: return "Datastore";
@@ -188,9 +190,11 @@ public class Zabbix_TimeSeries_TableModel extends JWorksheet_AbstractRowTableMod
 		toolTips[COL_ITEM_TEMPLATE_ID] = "Item template ID (item.templateid)";
 		toolTips[COL_ITEM_TEMPLATE_NAME] = "Item template name (from item.templateid)";
 		toolTips[COL_ITEM_TRENDS] = "Item trends save duration (item.trend)";
-		toolTips[COL_ITEM_TYPE] = "Item type (item.type)";
+		toolTips[COL_ITEM_TYPE] = "Item type (from item.type)";
+		toolTips[COL_ITEM_TYPE_NUM] = "Item type (item.type) number";
 		toolTips[COL_ITEM_UNITS] = "Item units (item.units)";
-		toolTips[COL_ITEM_VALUE_TYPE] = "Item value type (item.value_type)";
+		toolTips[COL_ITEM_VALUE_TYPE] = "Item value type (from item.value_type)";
+		toolTips[COL_ITEM_VALUE_TYPE_NUM] = "Item value type (item.value_type) number";
 
 		toolTips[COL_PROBLEMS] = "Problems";
 		toolTips[COL_DATASTORE] = "Datastore name";
@@ -225,8 +229,10 @@ public class Zabbix_TimeSeries_TableModel extends JWorksheet_AbstractRowTableMod
 	    widths[COL_ITEM_TEMPLATE_NAME] = 15;
 	    widths[COL_ITEM_TRENDS] = 8;
 	    widths[COL_ITEM_TYPE] = 15;
+	    widths[COL_ITEM_TYPE_NUM] = 12;
 	    widths[COL_ITEM_UNITS] = 6;
 	    widths[COL_ITEM_VALUE_TYPE] = 10;
+	    widths[COL_ITEM_VALUE_TYPE_NUM] = 15;
 
 		widths[COL_PROBLEMS] = 30;
 		widths[COL_DATASTORE] = 10;
@@ -240,7 +246,13 @@ public class Zabbix_TimeSeries_TableModel extends JWorksheet_AbstractRowTableMod
 	*/
 	public String getFormat ( int column ) {
 		switch (column) {
-			default: return "%s"; // All else are strings.
+			case COL_ITEM_TYPE_NUM:
+			case COL_ITEM_VALUE_TYPE_NUM:
+				// Known integers.
+				return "%d";
+			default:
+				// All else are strings.
+				return "%s";
 		}
 	}
 
@@ -287,15 +299,12 @@ public class Zabbix_TimeSeries_TableModel extends JWorksheet_AbstractRowTableMod
 			case COL_ITEM_TEMPLATE_ID: return timeSeriesCatalog.getItemTemplateId();
 			case COL_ITEM_TEMPLATE_NAME: return timeSeriesCatalog.getItemTemplateName();
 			case COL_ITEM_TRENDS: return timeSeriesCatalog.getItemTrends();
-			case COL_ITEM_TYPE:
-				ItemType itemType = ItemType.valueOfIgnoreCase(timeSeriesCatalog.getItemType());
-				return itemType.toString() + " (" + timeSeriesCatalog.getItemType() + ")";
+			case COL_ITEM_TYPE: return timeSeriesCatalog.getItemType();
+			case COL_ITEM_TYPE_NUM: return timeSeriesCatalog.getItemTypeNum();
 			case COL_ITEM_UNITS: return timeSeriesCatalog.getItemUnits();
 			//case COL_ITEM_NAME: return timeSeriesCatalog.getItemName();
-			case COL_ITEM_VALUE_TYPE:
-				ValueType valueType = ValueType.valueOfIgnoreCase(timeSeriesCatalog.getItemValueType());
-				return valueType.toString() + " (" + timeSeriesCatalog.getItemValueType() + ")";
-
+			case COL_ITEM_VALUE_TYPE: return timeSeriesCatalog.getItemValueType();
+			case COL_ITEM_VALUE_TYPE_NUM: return timeSeriesCatalog.getItemValueTypeNum();
 			case COL_PROBLEMS: return timeSeriesCatalog.formatProblems();			
 			case COL_DATASTORE: return this.datastore.getName();			
 			default: return "";

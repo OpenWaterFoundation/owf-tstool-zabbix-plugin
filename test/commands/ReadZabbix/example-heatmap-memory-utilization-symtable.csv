@@ -1,0 +1,8 @@
+# Symbol table for 15 minute streamflow example.
+valueMin,  valueMax, color,   opacity, fillColor, fillOpacity, comment
+-Infinity, <0,       #000000, 1.0,     #000000,   1.0,         black
+>=0,       <=50,     #0000ff, 1.0,     #0000ff,   1.0,         blue - high performance
+>50,       <=70,     #00ff00, 1.0,     #00ff00,   1.0,         green - ok
+>70,       <90,      #ffff00, 1.0,     #ffff00,   1.0,         yellow - concern
+>=90,      Infinity, #ff0000, 1.0,     #ff0000,   1.0,         red - problem
+NoData,    NoData,   #ffffff, 1.0,     #ffffff,   1.0,         white

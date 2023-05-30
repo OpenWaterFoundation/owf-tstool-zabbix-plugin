@@ -98,6 +98,28 @@ public enum ValueType {
     }
 
     /**
+     * Return the display name.
+     * @return the display name.
+     */
+    public String getDisplayName () {
+    	return this.displayName;
+    }
+    
+    /**
+     * Indicate whether the value type is numeric (float or integer),
+     * which will allow storage in a number.
+     * @return true if FLOAT or INTEGER and false otherwise.
+     */
+    public boolean isNumeric () {
+    	if ( (this == FLOAT)  || (this == INTEGER) ) {
+    		return true;
+    	}
+    	else {
+    		return false;
+    	}
+    }
+
+    /**
      * Return the display name for the line style type.
      * This is usually the same as the value but using appropriate mixed case.
      * @return the display name.

@@ -53,9 +53,13 @@ with TSTool, as follows:
 +   History data:
     *   Time series has data interval `IrregSecond`.
     *   The timestamp (Zabbix `clock`) indicates the time of the observation or computed value.
-    *   No adjustment to the timestamp is required.
+        No adjustment to the timestamp is required.
+    *   Time series that contain numerical values have the number as the value and no flag.
+    *   Time series that contain text values have the flag as the value and
+        the number is set according to the `TextValue` command parameter.
 +   Trend data:
     *   Time series has data interval `Hour`.
+    *   Only history data with numerical values are available as trend time series.
     *   Zabbix uses a timestamp (`clock`) corresponding to the interval start.
         However, TSTool uses timestamps correspondoing to the interval end.
         Therefore, by default, trend data timestamps will be shifted to the interval end
@@ -115,17 +119,18 @@ Command Parameters
 |**Tab**|**Parameter**&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|**Description**|**Default**&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|
 |--------------|-----------------|-----------------|--|
 |All|`DataStore`<br>**required**|The Zabbix datastore name to use for the web services connection, as per datastore configuration files (see the [Zabbix Web Services Datastore appendix](../../datastore-ref/Zabbix/Zabbix.md)). | None - must be specified. |
-||`DataType`<br>**required**|The data type to be queried:<ul><li>`item.name` - for history data</li><li>`item.name` appended with the statistic (e.g., `-Avg`) - for trend data</li></ul> Surround with single quotes if the value contains a space or period. | `*` to read all the time series. |
-||`Interval`<br>**required**|The data interval for the time series<ul><li>`IrregSecond` - for history data</li><li>`Hour` - for trend data</li></ul> | `*` - to read all the time series. |
+||`DataType`<br>**required**|The data type to be queried:<ul><li>`*` - to read all the time series</li><li>`item.name` - for history data</li><li>`item.name` appended with the statistic (`-Avg`, `-Max`, `-Min`) - for trend data</li></ul> Surround with single quotes if the value contains a space or period. | `*` |
+||`Interval`<br>**required**|The data interval for the time series<ul><li>`*` - to read all the time series</li><li>`IrregSecond` - for history data</li><li>`Hour` - for trend data</li></ul> | `*` |
 |***Match Single Time Series***|`DataSource`<br>**required**|The data source, corresponding to Zabbix `hostgroup.name`. Surround with single quotes if the value contains a space or period. | None - must be specified to read a single time series. |
 ||`LocId`<br>**required**|The location identifier, corresponding to Zabbix `host`. Surround with single quotes if the value contains a space or period. | None - must be specified to read a single time series. |
 ||`TSID`| A view-only value that indicates the time series identifier that will result from the input parameters when a single time series is queried. | |
 |***Match 1+ Time Series***|`WhereN`|When reading 1+ time series, the “where” clauses to be applied.  The filters match the values in the Where fields in the command editor dialog and the TSTool main interface.  The parameters should be named `Where1`, `Where2`, etc., with a gap resulting in the remaining items being ignored.  The format of each value is:<br>`Item;Operator;Value`<br>Where `Item` indicates a data field to be filtered on, `Operator` is the type of constraint, and `Value` is the value to be checked when querying.|If not specified, the query will not be limited and very large numbers of time series may be queried.|
 |All|`Alias`<br>|The alias to assign to the time series, as a literal string or using the special formatting characters listed by the command editor.  The alias is a short identifier used by other commands to locate time series for processing, as an alternative to the time series identifier (`TSID`).|None – alias not assigned.|
-||`InputStart`|Start of the period to query, specified as a date/time with a precision that matches the requested data interval. The time is in the time zone for the host, or GMT if the host does not have a time zone. |Read all available data.|
-||`InputEnd`|End of the period to query, specified as a date/time with a precision that matches the requested data interval. The time is in the time zone for the host, or GMT if the host does not have a time zone. |Read all available data.|
+||`InputStart`|Start of the period to query, specified as a date/time with a precision that matches the requested data interval. The time is the time zone for the host, or GMT if the host does not have a time zone. |Read all available data.|
+||`InputEnd`|End of the period to query, specified as a date/time with a precision that matches the requested data interval. The time is the time zone for the host, or GMT if the host does not have a time zone. |Read all available data.|
 ||`TimeZone`| Time zone for output, used when the web services time zone is not the same as that of the host. See the [Time Zone Handling](#time-zone-handling) section below. | Output will use the web service data time zone (GMT). |
 ||`ShiftTrendToIntervaEnd`| Zabbix uses a timestamp at the interval start.  TSTool uses a timestamp at the interval end.  This parameter controls how the timestamp is handled for hourly trend data:<ul><li>`False` - trend timestamps are at the beginning of intervals</li><li>`True` - trend timestamps are at the end of interval</li></ul> See the [Trend Timestamp Shift](#trend-timestamp-shift) section below for more information. | `True` (shift to interval end). |
+||`TextValue` | Use with history time series to indicate the numerical value for time series when the history data contains text values:<ul><li>`Text` - if the text value can be converted to a number</li><li>`TimeSeriesCount` - the time series count (1+) for the command, useful for assigning a plotting position.</li><li>`TimeSeriesReverseCount` - the time series count (1+) for the command, in order from large to small count.</li></ul> | Time series missing value (flag is always set to the text). |
 ||`Debug`| Used for troubleshooting:  `False` or `True`. | `False` |
 
 ### Trend Timestamp Shift ###
@@ -179,6 +184,9 @@ The time zone results in dashboards displaying the requested time zone.
 The Zabbix API only recognizes GMT.
 The `InputStart` and `InputEnd` command parameters use the time zone of the host
 (or GMT if no host time zone ).
+Currently, if these parameter values use a different time zone
+(e.g., that of the local computer, which is different from the monitored host),
+the time zone for the parameters is ignored and instead the `TimeZone` parameter is used.
 
 For a Zabbix implementation where resources (e.g., computer servers) are located in multiple time zones,
 there is no way to configure Zabbix to show the data for the resource in a specific time zone.
@@ -207,6 +215,16 @@ If necessary, use the [`WebGet`](https://opencdss.state.co.us/tstool/latest/doc-
 to manually test the request (see [examples](https://github.com/OpenWaterFoundation/owf-tstool-zabbix-plugin/tree/main/test/commands/WebGet)).
 
 Confirm that the TSTool Zabbix plugin is implemented for the Zabbix API version.
+Currently only Zabbix version 5.4 has been fully tested for the plugin.
+
+Specific issues are listed below.
+
+1.  **A specific host and/or host group are listed in the main TSTool interface but not the `ReadZabbix` interface.**
+    The main interface shows a list of all unique values in Zabbix,
+    without consideration of relationships.
+    However, the `ReadZabbix` command lists values from the cached time series catalog.
+    A host group and/or host may be defined in Zabbix but may not be configured with monitoring itmes
+    (and therefore no time series are defined).
 
 ## See Also ##
 

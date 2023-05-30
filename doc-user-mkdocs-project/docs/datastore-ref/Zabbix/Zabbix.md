@@ -5,6 +5,7 @@
 *   [Other Specifications and Integration Considerations](#other-specifications-and-integration-considerations)
 *   [Limitations](#limitations)
 *   [Datastore Configuration File](#datastore-configuration-file)
+*   [Troubleshooting](#troubleshooting)
 *   [See Also](#see-also)
 
 --------------------
@@ -91,10 +92,13 @@ The meaning of the TSID parts is as follows:
             Therefore, the TSTool Zabbix plugin will by default shift hourly trend values
             to use the interval-ending time.
             Use the [`ReadZabbix`](../../command-ref/ReadZabbix/ReadZabbix.md) command to control
-            how the timestamp is handled.
+            how the timestamp is handled (see the command documentation for more details).
 *   The `Interval` is set to:
     +   `IrregSecond` for Zabbix history values.
+         History time series are available for all value types,
+         with the time series flag being used for text values.
     +   `Hour` for Zabbix trend values.
+        Trend time series are only available for history time series that have numerical value type.
 *   The `DatastoreName` is taken from the datastore configuration file `Name` property:
     +   The datastore name is listed in the TSTool main interface.
     +   Multiple datastores can be configured, each pointing to a different Zabbix web service.
@@ -144,8 +148,13 @@ The following are other specifications related to TSTool plugin integration with
         A shorter default period may be implemented in the future for Zabbix databases that store long periods.
 5.  **History Value Type**:
     1.  Zabbix history data may use floating point, integer, or text values.
-    2.  Numerical values are stored in time series values.
-    3.  Text values are stored in time series flags. **Not yet implemented.**
+    2.  Items that contain numerical values:
+        1.  Numerical values are stored in time series values.
+    3.  Items that contain text values:
+        1.  Text values are stored in time series flags.
+        2.  The default numerical value is the time series missing value.
+            Use the `TextValue` parameter in the 
+            [`ReadZabbix`](../../command-ref/ReadZabbix/ReadZabbix.md) command to control.
 6.  **Time zone:**
     1.  Zabbix internally stores data in GMT and the web service API also uses GMT.
     2.  The plugin defaults to using host time zone time for command parameters and output.
@@ -177,18 +186,15 @@ Additional software development is required to overcome these limitations.
     1.  The web service version is determined from the `apinfo.version` service.
     2.  The plugin has been tested with API version 5.4,
         which uses the older `auth` query parameter for authentication.
-2.  **Text time series values:**
-    1.  Currently, history time series values that are of text type are listed
-        in the time series catalog but the values are not handled.
-3.  **Problem time series:**
+2.  **Problem time series:**
     1.  Zabbix problem data could be read as time series,
         for example to annotate time series.
         However, this feature is not yet implemented.
-4.  **Event time series:**
+3.  **Event time series:**
     1.  Zabbix event data could be read as time series,
         for example to annotate time series.
         However, this feature is not yet implemented.
-5.  **Template for item:**
+4.  **Template for item:**
     1.  Currently, the template associated with an item is not included in time series properties.
         This may be added in the future because it is useful to know what template
         caused an item to be measured.
@@ -260,6 +266,10 @@ Zabbix Web Services DataStore Configuration File Properties
 | `SystemLogin`<br>**required** | Login name for authentication, used with older `auth` parameter authentication. | None - must be specified. |
 | `SystemPassword`<br>**required** | Password for authentication, used with older `auth` parameter authentication. | None - must be specified. |
 | `Type`<br>**required** | Must be `ZabbixDataStore`, which is used by TSTool to identify which plugin software to use for the datastore. | None - must be specified. |
+
+## Troubleshooting ##
+
+See the [`ReadZabbix`](../../command-ref/ReadZabbix/ReadZabbix.md#troubleshooting) command troubleshooting.
 
 ## See Also 
 

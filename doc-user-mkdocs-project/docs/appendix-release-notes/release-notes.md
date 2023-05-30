@@ -1,8 +1,27 @@
 # TSTool / Zabbix Data Web Services Plugin / Release Notes #
 
+*   [Changes in Version 1.0.1](#changes-in-version-101)
 *   [Changes in Version 1.0.0](#changes-in-version-100)
 
 ----------
+
+## Changes in Version 1.0.1 ##
+
+**Maintenance release - fix bugs found in the initial release.**
+
+*   ![change](change.png) [1.0.1] Initial maintenance release:
+    +   **This version requires TSTool 14.8.2 to use multiple time series raster graphs**.
+    +   Add examples to test data for raster graphs (heat maps) of key system performance data (disk, memory, CPU utilization).
+*   ![change](change.png) [1.0.1] Update the time series catalog (list):
+    +   Item type and item value type have separate text and number columns to facilitate automated processing.
+    +   History data that contain text values are no longer with corresponding trends time series (trends only contain numerical data).
+*   ![bug](bug.png) [1.0.1] Update the [`ReadZabbix`](../command-ref/ReadZabbix/ReadZabbix.md) command:
+    +   Fix so that the `TimeZone` command parameter is recognized (previously was ignored).
+    +   Fix so that the `InputStart` and `InputEnd` command parameters are recognized
+        (previously were ignored due to a bug in the web service request).
+    +   Fix so that time series properties are set using time series catalog data.
+    +   Add the `TextValue` command parameter to provide a numerical value for history time series that contain text.
+        The text is set as the data flag and the numerical value is used for graphs.
 
 ## Changes in Version 1.0.0 ##
 

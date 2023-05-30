@@ -1,0 +1,15 @@
+StartLog(LogFile="results/example-heatmap-diskuse-utilization.tstool.log")
+# Example to create a heat map for disk use data for all systems.
+SetInputPeriod(InputStart="CurrentToHour - 30Day",InputEnd="CurrentToHour")
+# SetDebugLevel(LogFileLevel="2")
+ReadZabbix(DataStore="Zabbix-trilynx",DataType="Filesystems: /: Space utilization-Max",Interval="Hour")
+# SetDebugLevel(ScreenLevel="0",LogFileLevel="0")
+#
+# Sort the time series by source (host group), which is the system:
+# - if new data are added, the time series product data list will need to be updated
+SortTimeSeries(Property="hostgroup.name")
+#
+# Create the raster graph.
+# SetDebugLevel(LogFileLevel="1")
+ProcessRasterGraph(TSProductFile="example-heatmap-diskspace-utilization.tsp",OutputFile="results/example-heatmap-diskspace-utilization.png")
+# SetDebugLevel(ScreenLevel="0",LogFileLevel="0")

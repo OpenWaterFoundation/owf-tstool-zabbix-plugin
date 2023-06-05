@@ -1,0 +1,16 @@
+StartLog(LogFile="results/example-cpu-utilization-wet-heatmap.tstool.log")
+# Example of reading CPU maximum utilization hourly trend:
+# - WET GCP system
+# - use a short period, otherwise pixels overwrite for a long period
+SetInputPeriod(InputStart="CurrentToHour-7Day",InputEnd="CurrentToHour")
+wet-novastar5-gcp2.NovaStar Servers/64-bit.'CPU: utilization-Max'.Hour~Zabbix-trilynx
+#
+# Create a graph.
+ProcessTSProduct(TSProductFile="example-cpu-utilization-max-wet-heatmap.tsp",OutputFile="results/example-cpu-utilization-max-wet-heatmap.png")
+#
+# Also graph the average CPU utilization.
+# - WET GCP system
+wet-novastar5-gcp2.NovaStar Servers/64-bit.'CPU: utilization-Avg'.Hour~Zabbix-trilynx
+#
+# Create a graph.
+ProcessTSProduct(TSProductFile="example-cpu-utilization-avg-wet-heatmap.tsp",OutputFile="results/example-cpu-utilization-avg-wet-heatmap.png")

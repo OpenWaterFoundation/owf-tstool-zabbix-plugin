@@ -1,0 +1,3 @@
+StartLog(LogFile="results/example-HydroBaseWeb-15Minute.tstool.log")
+# CLAFTCCO (0301200) - CACHE LA POUDRE AT CANYON MOUTH NEAR FORT COLLINS
+abbrev:CLAFTCCO.DWR.DISCHRG.15Min~HydroBaseWeb

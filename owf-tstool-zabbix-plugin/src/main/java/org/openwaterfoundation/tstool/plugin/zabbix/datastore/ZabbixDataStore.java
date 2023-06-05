@@ -1572,7 +1572,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 				else {
 					// Convert the 'readEnd' (assumed to be in host time zone) to GMT for the API.
 					readEnd.setTimeZone(hostTimeZone);
-					ZonedDateTime readEndHostZone = readStart.toZonedDateTime(null);
+					ZonedDateTime readEndHostZone = readEnd.toZonedDateTime(null);
 					ZoneId zoneIdGmt = ZoneId.of("GMT");
 					ZonedDateTime readEndGmt = readEndHostZone.withZoneSameInstant(zoneIdGmt);
 					timeTill = readEndGmt.toEpochSecond();
@@ -1973,7 +1973,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 					// - if called from the TSTool UI, data type and interval will always have values
 					Message.printStatus(2, routine, "  Getting time series catalog from the cache by matching filters." );
 					String hostGroupName = ifp.getInputValue("hostgroup.name", false);
-					String host = ifp.getInputValue("host", false);
+					String host = ifp.getInputValue("host.host", false);
 					String hostName = ifp.getInputValue("host.name", false);
 					String itemName = ifp.getInputValue("item.name",false);
 					Message.printStatus(2, routine, "  dataTypeReq=\"" + dataTypeReq + "\"" );
@@ -1983,7 +1983,9 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 					Message.printStatus(2, routine, "  host.name=\"" + hostName + "\"" );
 					Message.printStatus(2, routine, "  item.name=\"" + itemName + "\"" );
 					List<TimeSeriesCatalog> tscatalogList = new ArrayList<>();
-					// Read the time series matching the filters.
+					// Read the time series matching the filters:
+					// - if "*", reading history and trend
+					// - otherwise, read one or the other based on the data interval
 					if ( dataTypeReq.equals("*") || readHistory ) {
 						// Try to match history time series.
 						tscatalogList = TimeSeriesCatalog.lookupCatalog(this.globalHistoryTscatalogList,

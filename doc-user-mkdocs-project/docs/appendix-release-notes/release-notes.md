@@ -1,9 +1,18 @@
 # TSTool / Zabbix Data Web Services Plugin / Release Notes #
 
+*   [Changes in Version 1.0.2](#changes-in-version-102)
 *   [Changes in Version 1.0.1](#changes-in-version-101)
 *   [Changes in Version 1.0.0](#changes-in-version-100)
 
 ----------
+
+## Changes in Version 1.0.2 ##
+
+**Maintenance release - fix bugs.**
+
+*   ![bug](bug.png) [1.0.2] Update the [`ReadZabbix`](../command-ref/ReadZabbix/ReadZabbix.md) command:
+    +   Fix but where the period end for reading time series was not being handled correctly (was set to the start).
+    +   Fix query folder for `host` (was ignored).
 
 ## Changes in Version 1.0.1 ##
 

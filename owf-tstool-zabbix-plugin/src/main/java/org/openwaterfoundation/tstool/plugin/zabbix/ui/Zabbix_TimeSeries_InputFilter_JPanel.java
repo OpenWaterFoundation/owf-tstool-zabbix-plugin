@@ -174,7 +174,7 @@ public class Zabbix_TimeSeries_InputFilter_JPanel extends InputFilter_JPanel {
 		// The internal names for filters match the /tscatalog web service query parameters.
 		// TODO smalers 2020-01-24 add more filters for points, point type, etc. as long as the web service API supports
 
-	    List<InputFilter> filters = new ArrayList<InputFilter>();
+	    List<InputFilter> filters = new ArrayList<>();
 
 	    // Always add blank to top of filter
 	    filters.add(new InputFilter("", "", StringUtil.TYPE_STRING, null, null, false)); // Blank

@@ -1,8 +1,8 @@
 [Product]
 
 ProductType = "Graph"
-TotalWidth = "600"
-TotalHeight = "400"
+TotalWidth = "1500"
+TotalHeight = "800"
 MainTitleString = "MHFD NovaStar Servers"
 SubTitleString = "CPU Utilization (%)"
 

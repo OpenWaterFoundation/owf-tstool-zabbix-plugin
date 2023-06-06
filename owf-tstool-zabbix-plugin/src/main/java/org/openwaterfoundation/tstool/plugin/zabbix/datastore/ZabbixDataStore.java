@@ -141,6 +141,12 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 	 * The API major version, currently used for the authentication check.
 	 */
 	private int apiMajorVersion = -1;
+	
+	/**
+	 * Preferred host group name patterns, to use for the host when there is more than one group.
+	 * The strings can contain * wildcards.
+	 */
+	private List<String> preferredHostGroupNames = new ArrayList<>();
 
 	/**
 	 * Whether to use API token for login (as of version 6.0?, true), or older "auth" login (false).
@@ -182,6 +188,22 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
         this.pluginProperties.put("Description", "Plugin to integrate TSTool with Zabbix web resources.");
         this.pluginProperties.put("Author", "Open Water Foundation, https://openwaterfoundation.org");
         this.pluginProperties.put("Version", PluginMeta.VERSION);
+        
+        // For now hard-code preferred host group name to use in TSID:
+        // - add as a configuration property once discuss options
+	    String preferredHostGroupName = props.getValue("PreferredHostGroupName");
+       	this.preferredHostGroupNames = new ArrayList<>();
+        if ( (preferredHostGroupName != null) && !preferredHostGroupName.isEmpty() ) {
+        	// Split the string.
+        	String [] parts = preferredHostGroupName.split(",");
+        	String preferredName = null;
+        	for ( String part : parts ) {
+        		// Convert to Java regular expression.
+        		preferredName = part.replace("*", ".*").trim();
+        		this.preferredHostGroupNames.add(preferredName);
+        		Message.printStatus(2, routine, "Using preferred host host group name: '" + preferredName + "'");
+        	}
+        }
 
         // Get the version:
         // - if major version is 6, authenticate with the ApiToken
@@ -1997,7 +2019,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 							itemName );
 						Message.printStatus(2, routine, "  Matched " + tscatalogList.size() + " history time series catalog." );
 					}
-					else if ( dataTypeReq.equals("*") || readTrend ) {
+					if ( dataTypeReq.equals("*") || readTrend ) {
 						// Try to match trend time series.
 						List<TimeSeriesCatalog> tscatalogList2 = TimeSeriesCatalog.lookupCatalog(this.globalTrendTscatalogList,
 							dataTypeReq,
@@ -2105,6 +2127,11 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 
 			List<TimeSeriesCatalog> tscatalogList = new ArrayList<>();
 			String dataInterval = "IrregSecond";
+			
+			// Determine preferred host groups:
+			// - to help when there are multiple groups for a host
+			// - for example, prefer "Clients/" over other groups
+			// - TODO smalers hard-code this for now but add a configuration file property later
 
 			// Loop through the 'Item' instances and create corresponding TimeSeriesCatalog entries.
 			for ( Item item : itemList ) {
@@ -2125,13 +2152,26 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 					// Look up the host group:
 					// - Zabbix allows a host to be in multiple groups
 					// - however, for identification, use the first group
-					List<HostGroup> hostGroupList = host.getGroups();
-					if ( (hostGroupList != null) && (hostGroupList.size() > 0) ) {
-						HostGroup hostGroup = hostGroupList.get(0);
-						if ( hostGroup != null ) {
-							tscatalog.setDataSource ( hostGroup.getName() );
-							tscatalog.setHostGroupId ( hostGroup.getGroupid() );
-							tscatalog.setHostGroupName ( hostGroup.getName() );
+					HostGroup hostGroup = host.lookupPreferredHostGroup ( this.preferredHostGroupNames );
+					if ( hostGroup != null ) {
+						String hostGroupName = hostGroup.getName();
+						tscatalog.setDataSource ( hostGroupName );
+						tscatalog.setHostGroupId ( hostGroup.getGroupid() );
+						tscatalog.setHostGroupName ( hostGroup.getName() );
+						// Set the additional group names as information, but are not used in TSID.
+						List<HostGroup> hostGroups = host.getGroups();
+						if ( (hostGroups != null) && (hostGroups.size() > 1) ) {
+							StringBuilder b = new StringBuilder();
+							for ( HostGroup hostGroup2 : hostGroups ) {
+								if ( !hostGroup2.getName().equals(hostGroupName) ) {
+									// Name does not match so add.
+									if ( b.length() > 0 ) {
+										b.append ( "," );
+									}
+									b.append ( hostGroup2.getName() );
+								}
+							}
+							tscatalog.setHostGroupName2(b.toString());
 						}
 					}
 

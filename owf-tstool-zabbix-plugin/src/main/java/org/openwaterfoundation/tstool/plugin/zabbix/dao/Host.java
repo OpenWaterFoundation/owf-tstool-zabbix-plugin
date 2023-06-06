@@ -129,4 +129,36 @@ public class Host {
 		return null;
 	}
 
+	/**
+	 * Lookup the preferred host group.
+	 * @param preferredHostGroupNames list of preferred host group names, can include * wildcard
+	 * (for example "Clients/*").
+	 * @return the host group that matches a preferred host group name, or null if no host group
+	 */
+	public HostGroup lookupPreferredHostGroup ( List<String> preferredHostGroupNames ) {
+		if ( (this.groups == null) || this.groups.isEmpty() ) {
+			// No group.
+			return null;
+		}
+		else if ( this.groups.size() == 1 ) {
+			// Only one group.
+			return this.groups.get(0);
+		}
+		else {
+			// First try to find a group that matches the preferred name.
+			for ( HostGroup hostGroup : this.groups ) {
+				String groupName = hostGroup.getName();
+				for ( String preferredGroupName : preferredHostGroupNames ) {
+					if ( groupName.matches(preferredGroupName) ) {
+						// Found a preferred name.
+						return hostGroup;
+					}
+				}
+			}
+			// If not found above, return the first group.
+			// This can be unpredictable.
+			return this.groups.get(0);
+		}
+	}
+
 }

@@ -47,6 +47,8 @@ public class TimeSeriesCatalog {
 	// Host group data, listed alphabetically.
 	private String hostGroupId = null;
 	private String hostGroupName = null;
+	// Additional group names that don't match hostGroupName value.
+	private String hostGroupName2 = null;
 
 	// Host data, listed alphabetically.
 	//private Double stationLatitude = null;
@@ -118,6 +120,7 @@ public class TimeSeriesCatalog {
 		// Host group data, listed alphabetically.
 		this.hostGroupId = timeSeriesCatalog.hostGroupId;
 		this.hostGroupName = timeSeriesCatalog.hostGroupName;
+		this.hostGroupName2 = timeSeriesCatalog.hostGroupName2;
 
 		// Host data, listed alphabetically.
 		//private Double stationLatitude = null;
@@ -369,6 +372,10 @@ public class TimeSeriesCatalog {
 		return this.hostGroupName;
 	}
 
+	public String getHostGroupName2 ( ) {
+		return this.hostGroupName2;
+	}
+
 	public String getHostId ( ) {
 		return this.hostId;
 	}
@@ -575,6 +582,10 @@ public class TimeSeriesCatalog {
 
 	public void setHostGroupName ( String hostGroupName ) {
 		this.hostGroupName = hostGroupName;
+	}
+
+	public void setHostGroupName2 ( String hostGroupName2 ) {
+		this.hostGroupName2 = hostGroupName2;
 	}
 
 	public void setHostId ( String hostId ) {

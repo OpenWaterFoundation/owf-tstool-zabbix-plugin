@@ -8,11 +8,17 @@
 
 ## Changes in Version 1.0.2 ##
 
-**Maintenance release - fix bugs.**
+**Maintenance release - fix bugs related to identifying and reading time series.**
 
+*   ![bug](bug.png) [1.0.2] Enhance code that reads Zabbix time series:
+    +   Hosts that belong to more than one host group were previously using the first group as the data source
+        in time series identifiers, which can lead to confusion.  This is still the default.
+    +   The datastore configuration property `PreferredHostGroupName` has been added and
+        can be set to comma-separated list of patterns using `*` as a wildcard.
+        This ensures that the group name that is used for time series identifiers is appropriate.
+    +   Fix the query filter for `host` (was ignored).
 *   ![bug](bug.png) [1.0.2] Update the [`ReadZabbix`](../command-ref/ReadZabbix/ReadZabbix.md) command:
-    +   Fix but where the period end for reading time series was not being handled correctly (was set to the start).
-    +   Fix query folder for `host` (was ignored).
+    +   Fix bug where the period end for reading time series was not being handled correctly (was set to the start).
 
 ## Changes in Version 1.0.1 ##
 

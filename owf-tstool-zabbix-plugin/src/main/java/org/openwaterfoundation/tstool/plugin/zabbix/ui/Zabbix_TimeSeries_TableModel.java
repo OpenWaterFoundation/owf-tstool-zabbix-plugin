@@ -39,7 +39,7 @@ public class Zabbix_TimeSeries_TableModel extends JWorksheet_AbstractRowTableMod
 	/**
 	Number of columns in the table model.
 	*/
-	private final int COLUMNS = 25;
+	private final int COLUMNS = 26;
 
 	public final int COL_LOCATION_ID = 0;
 	public final int COL_DATA_SOURCE = 1;
@@ -54,24 +54,25 @@ public class Zabbix_TimeSeries_TableModel extends JWorksheet_AbstractRowTableMod
 	// Put host group after host because host group name is already the data source and
 	// having the host name near the front is useful.
 	public final int COL_HOST_GROUP_NAME = 8;
-	public final int COL_HOST_GROUP_ID = 9;
+	public final int COL_HOST_GROUP_NAME2 = 9;
+	public final int COL_HOST_GROUP_ID = 10;
 
-	public final int COL_ITEM_DELAY = 10;
-	public final int COL_ITEM_HISTORY = 11;
-	public final int COL_ITEM_ID = 12;
-	public final int COL_ITEM_KEY = 13;
-	public final int COL_ITEM_STATUS = 14;
-	public final int COL_ITEM_TEMPLATE_ID = 15;
-	public final int COL_ITEM_TEMPLATE_NAME = 16;
-	public final int COL_ITEM_TRENDS = 17;
-	public final int COL_ITEM_TYPE = 18;
-	public final int COL_ITEM_TYPE_NUM = 19;
-	public final int COL_ITEM_UNITS = 20;
-	public final int COL_ITEM_VALUE_TYPE = 21;
-	public final int COL_ITEM_VALUE_TYPE_NUM = 22;
+	public final int COL_ITEM_DELAY = 11;
+	public final int COL_ITEM_HISTORY = 12;
+	public final int COL_ITEM_ID = 13;
+	public final int COL_ITEM_KEY = 14;
+	public final int COL_ITEM_STATUS = 15;
+	public final int COL_ITEM_TEMPLATE_ID = 16;
+	public final int COL_ITEM_TEMPLATE_NAME = 17;
+	public final int COL_ITEM_TRENDS = 18;
+	public final int COL_ITEM_TYPE = 19;
+	public final int COL_ITEM_TYPE_NUM = 20;
+	public final int COL_ITEM_UNITS = 21;
+	public final int COL_ITEM_VALUE_TYPE = 22;
+	public final int COL_ITEM_VALUE_TYPE_NUM = 23;
 
-	public final int COL_PROBLEMS = 23;
-	public final int COL_DATASTORE = 24;
+	public final int COL_PROBLEMS = 24;
+	public final int COL_DATASTORE = 25;
 	
 	/**
 	Datastore corresponding to datastore used to retrieve the data.
@@ -131,7 +132,7 @@ public class Zabbix_TimeSeries_TableModel extends JWorksheet_AbstractRowTableMod
 		switch (columnIndex) {
 			case COL_LOCATION_ID: return "Host";
 			case COL_DATA_SOURCE: return "Host Group";
-			case COL_DATA_TYPE: return "Item Name";
+			case COL_DATA_TYPE: return "Data Type";
 			case COL_DATA_INTERVAL: return "Interval";
 			case COL_UNITS: return "Units";
 
@@ -140,6 +141,7 @@ public class Zabbix_TimeSeries_TableModel extends JWorksheet_AbstractRowTableMod
 			case COL_HOST_DESCRIPTION: return "Host Description";
 
 			case COL_HOST_GROUP_NAME: return "Host Group Name";
+			case COL_HOST_GROUP_NAME2: return "Host Group Name 2";
 			case COL_HOST_GROUP_ID: return "Host Group ID";
 
 			case COL_ITEM_DELAY: return "Item Delay";
@@ -171,7 +173,7 @@ public class Zabbix_TimeSeries_TableModel extends JWorksheet_AbstractRowTableMod
 	    String[] toolTips = new String[this.COLUMNS];
 	    toolTips[COL_LOCATION_ID] = "Location identifier (host.host)";
 	    toolTips[COL_DATA_SOURCE] = "Data source (hostgroup.name)";
-	    toolTips[COL_DATA_TYPE] = "Data type (item.name)";
+	    toolTips[COL_DATA_TYPE] = "Data type (item.name, trend also has statistic)";
 	    toolTips[COL_DATA_INTERVAL] = "Data interval";
 	    toolTips[COL_UNITS] = "Units (item.units)";
 
@@ -180,6 +182,7 @@ public class Zabbix_TimeSeries_TableModel extends JWorksheet_AbstractRowTableMod
 	    toolTips[COL_HOST_DESCRIPTION] = "Host description (host.description)";
 
 	    toolTips[COL_HOST_GROUP_NAME] = "Host group name (hostgroup.name)";
+	    toolTips[COL_HOST_GROUP_NAME2] = "Additional host group name(s) (hostgroup.name)";
 	    toolTips[COL_HOST_GROUP_ID] = "Host group ID (hostgroup.groupid";
 
 		toolTips[COL_ITEM_DELAY] = "Item delay (item.delay)";
@@ -218,6 +221,7 @@ public class Zabbix_TimeSeries_TableModel extends JWorksheet_AbstractRowTableMod
 	    widths[COL_HOST_DESCRIPTION] = 20;
 
 	    widths[COL_HOST_GROUP_NAME] = 25;
+	    widths[COL_HOST_GROUP_NAME2] = 25;
 	    widths[COL_HOST_GROUP_ID] = 10;
 
 	    widths[COL_ITEM_DELAY] = 8;
@@ -289,6 +293,7 @@ public class Zabbix_TimeSeries_TableModel extends JWorksheet_AbstractRowTableMod
 			case COL_HOST_DESCRIPTION: return timeSeriesCatalog.getHostDescription();
 
 			case COL_HOST_GROUP_NAME: return timeSeriesCatalog.getHostGroupName();
+			case COL_HOST_GROUP_NAME2: return timeSeriesCatalog.getHostGroupName2();
 			case COL_HOST_GROUP_ID: return timeSeriesCatalog.getHostGroupId();
 
 			case COL_ITEM_DELAY: return timeSeriesCatalog.getItemDelay();

@@ -78,7 +78,11 @@ The meaning of the TSID parts is as follows:
 *   The `LocationId` is set to:
     +   The Zabbix host, which is typically the machine name or IP address.
 *   The `DataSource` is set to:
-    +   The Zabbix host group name.
+    +   The Zabbix host group name:
+        -   If the host is assigned to multiple groups,
+            the default is the first host group.
+        -   Use the datastore configuration property `PreferredHostGroupName` to control
+            the host group name assignment.
     +   If multiple systems are monitored,
         the host group typically corresponds to the system.
 *   The `DataType` is set to:
@@ -241,6 +245,8 @@ SystemLogin = "someuser"
 SystemPassword = "somepassword"
 # Use this for Zabbix >= 6.0:
 ApiToken = "SomeApiToken"
+# Preferred group name, to help when a host is in multiple groups.
+PreferredHostGroupName = "Clients/*,Client/*,Systems/*,System/*,WET/*"
 ```
 
 **<p style="text-align: center;">
@@ -261,6 +267,7 @@ Zabbix Web Services DataStore Configuration File Properties
 | `Description`<br>**required** | Description of the datastore, typically a short sentence, used in some displays. | None - must be specified. |
 | `Enabled` | Indicates whether the datastore is enabled. | `True` |
 | `Name`<br>**required** | Datastore name that is used in the TSTool software and Zabbix commands.  The name should be unique across all datastores. | None - must be specified. |
+| `PreferredHostGroupName` | One or more comma-separated patterns indicating the preferred host group name to use for time series identifiers, optionally using `*` for a wildcard, necessary when hosts may be assigned to more than one group (e.g., `Clients/*,Systems/*`).  | Use the first group name found for the host. |
 | `ServiceApiDocumentationURI` | The URL for the web services API documentation, which should agree with the Zabbix version.  | If not configured, documentation will not be available from command editors. |
 | `ServiceRootURI`<br>**required** | The root URL for the web services.  This should include everything ending with `api_jsonrpc.php`. | None - must be specified. |
 | `SystemLogin`<br>**required** | Login name for authentication, used with older `auth` parameter authentication. | None - must be specified. |

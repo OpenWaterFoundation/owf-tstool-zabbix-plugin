@@ -1,0 +1,21 @@
+StartLog(LogFile="results/example-heatmap-cpu-utilization-using-template.tstool.log")
+# Example to create a heat map for CPU utilization data for all systems:
+# - this uses a template time series product file so that if the number of hosts changes the plot will include all
+SetInputPeriod(InputStart="CurrentToHour - 30Day",InputEnd="CurrentToHour")
+# SetDebugLevel(LogFileLevel="2")
+ReadZabbix(DataStore="Zabbix-trilynx",DataType="CPU: utilization-Max",Interval="Hour")
+# SetDebugLevel(ScreenLevel="0",LogFileLevel="0")
+#
+# Sort the time series by source (host group), which is the system.
+SortTimeSeries(Property="hostgroup.name")
+#
+# Create a list of the time series in a table, used below to expand the template.
+CopyTimeSeriesPropertiesToTable(TSList="AllTS",TableID="TSID_List",TableTSIDColumn="TSID",TableTSIDFormat="%F")
+#
+# Create the raster graph:
+# - expand the template time series product file to the final in the 'results' folder
+# - provide information to pass a one-column table since the TSID_List table from above has multiple properties
+# SetDebugLevel(LogFileLevel="1")
+ExpandTemplateFile(InputFile="example-heatmap-cpu-utilization-using-template.tsp",TableColumnProperties="TSID_List,TSID,TSID_List",OutputFile="results/example-heatmap-cpu-utilization-using-template.tsp")
+ProcessRasterGraph(TSProductFile="results/example-heatmap-cpu-utilization-using-template.tsp",OutputFile="results/example-heatmap-cpu-utilization-using-template.png")
+# SetDebugLevel(ScreenLevel="0",LogFileLevel="0")

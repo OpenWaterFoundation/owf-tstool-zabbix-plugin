@@ -18,5 +18,5 @@ CopyTimeSeriesPropertiesToTable(TSList="AllTS",TableID="TSID_List",TableTSIDColu
 # - provide information to pass a one-column table since the TSID_List table from above has multiple properties
 # SetDebugLevel(LogFileLevel="1")
 ExpandTemplateFile(InputFile="results/example-heatmap-memory-utilization-using-template.tsp",TableColumnProperties="TSID_List,TSID,TSID_List",OutputFile="results/example-heatmap-memory-utilization-using-template.tsp")
-ProcessRasterGraph(TSProductFile="example-heatmap-memory-utilization.tsp",OutputFile="results/example-heatmap-memory-utilization.png")
+ProcessRasterGraph(TSProductFile="example-heatmap-memory-utilization.tsp",OutputFile="results/example-heatmap-memory-utilization-using-template.png")
 # SetDebugLevel(ScreenLevel="0",LogFileLevel="0")

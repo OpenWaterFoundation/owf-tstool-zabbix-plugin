@@ -1,0 +1,8 @@
+StartLog(LogFile="results/example-MHFD-heatmap-diskuse-utilization.tstool.log")
+# Example to create a heat map for MHFD disk use data (each server a single heat map).
+SetInputPeriod(InputStart="CurrentToHour - 1Year",InputEnd="CurrentToHour")
+ReadZabbix(DataStore="Zabbix-trilynx",DataType="Filesystems: /: Space utilization-Max",Interval="Hour",Where1="hostgroup.name;Matches;Clients/CO-District-MHFD")
+#
+# Create the raster graphs.
+ProcessRasterGraph(TSProductFile="example-MHFD-primary-heatmap-diskspace-utilization.tsp",OutputFile="results/example-MFHD-primary-heatmap-diskspace-utilization.png")
+ProcessRasterGraph(TSProductFile="example-MHFD-backup-heatmap-diskspace-utilization.tsp",OutputFile="results/example-MFHD-backup-heatmap-diskspace-utilization.png")

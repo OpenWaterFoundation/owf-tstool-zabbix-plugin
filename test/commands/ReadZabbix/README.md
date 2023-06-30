@@ -13,7 +13,8 @@ The following are examples.
 | -- | -- |
 | `example1.tstool` | Initial example.  Others are better examples. |
 | `example-MHFD-heatmap-diskspace-utilization` | MHFD system disk space utilization, one heatmap per server. |
-| `example-MHFD-with-precip.tstool` | MHFD system Min/Avg/Max performance with precipitation, with line graph. |
+| `example-MHFD-with-precip-backup.tstool` | MHFD system Min/Avg/Max performance with precipitation, with line graph, backup (web) node. |
+| `example-MHFD-with-precip-primary.tstool` | MHFD system Min/Avg/Max performance with precipitation, with line graph, primary node. |
 | `example-MHFD.tstool` | MHFD system Min/Avg/Max performance (without precipitation), with line graph. |
 | `example-heatmap-cpu-utilization-using-template.tstool` | CPU utilization across multiple systems, with heat map, using time series product template. |
 | `example-heatmap-cpu-utilization.tstool` | CPU utilization across multiple systems, with heat map. |

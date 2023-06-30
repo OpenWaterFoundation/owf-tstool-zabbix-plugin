@@ -1,10 +1,10 @@
 # Simple example to graph important system resources.
 #
 # CPU Utilization
-ReadZabbix(DataStore="Zabbix-trilynx",DataType="CPU: utilization-Avg",Interval="Hour",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
-ReadZabbix(DataStore="Zabbix-trilynx",DataType="CPU: utilization-Min",Interval="Hour",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
-ReadZabbix(DataStore="Zabbix-trilynx",DataType="CPU: utilization-Max",Interval="Hour",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
-ReadZabbix(DataStore="Zabbix-trilynx",DataType="CPU: utilization",Interval="IrregSecond",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
+ReadZabbix(DataStore="Zabbix-trilynx",DataType="CPU: Utilization-Avg",Interval="Hour",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
+ReadZabbix(DataStore="Zabbix-trilynx",DataType="CPU: Utilization-Min",Interval="Hour",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
+ReadZabbix(DataStore="Zabbix-trilynx",DataType="CPU: Utilization-Max",Interval="Hour",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
+ReadZabbix(DataStore="Zabbix-trilynx",DataType="CPU: Utilization",Interval="IrregSecond",DataSource="Clients/CO-District-MHFD",LocId="ud-ns518b")
 #
 # Process graph.
 ProcessTSProduct(TSProductFile="example-MHFD-cpu.tsp")

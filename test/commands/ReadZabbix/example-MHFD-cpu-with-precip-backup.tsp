@@ -20,23 +20,23 @@ Color = "Blue"
 GraphType = "Line"
 RightYAxisGraphType = "None"
 RightYAxisIgnoreUnits = "false"
-MainTitleString = "MHFD Backup Node Memory Utilization"
+MainTitleString = "MHFD Backup Node CPU Utilization"
 
 [Data 2.1]
 
-TSID = "ud-ns518b.Clients/CO-District-MHFD.'CPU: Utilization-Max'.Hour"
+TSID = "ud-ns518b.Clients/CO-District-MHFD.'CPU: utilization-Max'.Hour"
 Color = "Red"
 
 [Data 2.2]
 
-TSID = "ud-ns518b.Clients/CO-District-MHFD.'CPU: Utilization-Avg'.Hour"
+TSID = "ud-ns518b.Clients/CO-District-MHFD.'CPU: utilization-Avg'.Hour"
 Color = "DarkGray"
 
 [Data 2.3]
 
-TSID = "ud-ns518b.Clients/CO-District-MHFD.'CPU: Utilization-Min'.Hour"
+TSID = "ud-ns518b.Clients/CO-District-MHFD.'CPU: utilization-Min'.Hour"
 
 [Data 2.4]
 
-TSID = "ud-ns518b.Clients/CO-District-MHFD.'CPU: Utilization'.IrregSecond"
-Color = "Blue"
+#TSID = "ud-ns518b.Clients/CO-District-MHFD.'CPU: utilization'.IrregSecond"
+#Color = "Blue"

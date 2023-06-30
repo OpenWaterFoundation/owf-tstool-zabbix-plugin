@@ -3,7 +3,7 @@ StartLog(LogFile="results/example-heatmap-memory-utilization.tstool.log")
 # - this uses a template time series product file so that if the number of hosts changes the plot will include all
 SetInputPeriod(InputStart="CurrentToHour - 30Day",InputEnd="CurrentToHour")
 # SetDebugLevel(LogFileLevel="2")
-ReadZabbix(DataStore="Zabbix-trilynx",DataType="Memory: utilization-Max",Interval="Hour")
+ReadZabbix(DataStore="Zabbix-trilynx",DataType="Memory: Utilization-Max",Interval="Hour")
 # SetDebugLevel(ScreenLevel="0",LogFileLevel="0")
 #
 # Sort the time series by source (host group), which is the system.

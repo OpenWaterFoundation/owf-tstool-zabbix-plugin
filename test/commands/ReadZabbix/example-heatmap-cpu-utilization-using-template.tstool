@@ -19,3 +19,7 @@ CopyTimeSeriesPropertiesToTable(TSList="AllTS",TableID="TSID_List",TableTSIDColu
 ExpandTemplateFile(InputFile="example-heatmap-cpu-utilization-using-template.tsp",TableColumnProperties="TSID_List,TSID,TSID_List",OutputFile="results/example-heatmap-cpu-utilization-using-template.tsp")
 ProcessRasterGraph(TSProductFile="results/example-heatmap-cpu-utilization-using-template.tsp",OutputFile="results/example-heatmap-cpu-utilization-using-template.png")
 # SetDebugLevel(ScreenLevel="0",LogFileLevel="0")
+#
+# Upload to AWS folder to allow the heatmap to be viewed in the TriLynx system dashboard.
+AwsS3(S3Command="UploadObjects",Bucket="trilynx-systems-clients",UploadFiles="results/example-heatmap-cpu-utilization-using-template.png:CO-Company-TriLynx/dashboard/InfoProducts/AllSystemsPerformance/CPU-Utilization.png")
+AwsCloudFront(CloudFrontCommand="InvalidateDistribution",Region="aws-global",Comment="*clients.trilynx.systems*",InvalidationPaths="/CO-Company-TriLynx/dashboard/InfoProducts/AllSystemsPerformance/*",CallerReference="TSToolPerformanceWorkflow")

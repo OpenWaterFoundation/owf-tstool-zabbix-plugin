@@ -1,10 +1,30 @@
 # TSTool / Zabbix Data Web Services Plugin / Release Notes #
 
+*   [Changes in Version 1.0.3](#changes-in-version-103)
 *   [Changes in Version 1.0.2](#changes-in-version-102)
 *   [Changes in Version 1.0.1](#changes-in-version-101)
 *   [Changes in Version 1.0.0](#changes-in-version-100)
 
 ----------
+
+## Changes in Version 1.0.3 ##
+
+**Maintenance release - fix bug when viewing documentation.**
+
+*   ![change](change.png) [1.0.3] Maintenance release:
+    +   **This version requires TSTool 14.8.5 to enable web service request timeouts.**
+*   ![bug](bug.png) [1.0.3] The online documentation has been updated:
+    +   Help documentation for the 
+        [`ReadZabbix`](../command-ref/ReadZabbix/ReadZabbix.md) command
+        was not displaying from the command editor due to a bad URL.
+        The documentation can be viewed from the plugin download website.
+    +   TSTool has been updated to allow documentation for a plugin version to be displayed,
+        and if not found the latest documentation is displayed.
+*   ![change](change.png) [1.0.3] Zabbix web service requests now default to a timeout of 2 minutes,
+    meaning that if a connection is not established or data are not made available to read in 2 minutes,
+    an error will result.
+    This has been implemented to prevent TSTool from hanging if Zabbix web services are unavailable,
+    for example during system maintenance.
 
 ## Changes in Version 1.0.2 ##
 
@@ -25,7 +45,7 @@
 **Maintenance release - fix bugs found in the initial release.**
 
 *   ![change](change.png) [1.0.1] Initial maintenance release:
-    +   **This version requires TSTool 14.8.2 to use multiple time series raster graphs**.
+    +   **This version requires TSTool 14.8.2 to use multiple time series raster graphs.**
     +   Add examples to test data for raster graphs (heat maps) of key system performance data (disk, memory, CPU utilization).
 *   ![change](change.png) [1.0.1] Update the time series catalog (list):
     +   Item type and item value type have separate text and number columns to facilitate automated processing.
@@ -43,7 +63,7 @@
 **Feature release - initial production release.**
 
 *   ![new](new.png) [1.0.0] Initial production release:
-    +   **This version requires TSTool 14.8.1**.
+    +   **This version requires TSTool 14.8.1.**
     +   Main TSTool window includes browsing features to list Zabbix time series.
     +   [TSID for Zabbix](../command-ref/TSID/TSID.md) are recognized to read time series with default parameters.
     +   The [`ReadZabbix`](../command-ref/ReadZabbix/ReadZabbix.md) command is provided to automate

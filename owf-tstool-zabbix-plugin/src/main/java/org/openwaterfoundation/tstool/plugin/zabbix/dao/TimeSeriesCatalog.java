@@ -16,7 +16,7 @@ OWF TSTool Zabbix Plugin is distributed in the hope that it will be useful,
     GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-    along with OWF TSTool KiWIS Plugin.  If not, see <https://www.gnu.org/licenses/>.
+    along with OWF TSTool Zabbix Plugin.  If not, see <https://www.gnu.org/licenses/>.
 
 NoticeEnd */
 
@@ -30,7 +30,7 @@ import RTi.Util.Message.Message;
 
 /**
  * Class to store time series catalog (metadata) for Zabbix TSTool time series list.
- * This is a combination of standard time series properties used in TSTool and KiWIS data.
+ * This is a combination of standard time series properties used in TSTool and Zabbix data.
  * More data may be included and shown in the table model while evaluating the web services
  * and will be removed or disabled later.
  * The types are as one would expect, whereas the 'TimeSeries' object uses strings as per web service JSON types.
@@ -508,27 +508,27 @@ public class TimeSeriesCatalog {
 				if ( doCheckDataType && (dataType != null) ) {
 					if ( !tscatalog.getDataType().equals(dataType) ) {
 						doAdd = false;
-					}	
+					}
 				}
 				if ( doCheckDataInterval && (dataInterval != null) ) {
 					if ( !tscatalog.getDataInterval().equals(dataInterval) ) {
 						doAdd = false;
-					}	
+					}
 				}
 				if ( hostGroupName != null ) {
 					if ( !tscatalog.getHostGroupName().equals(hostGroupName) ) {
 						doAdd = false;
-					}	
+					}
 				}
 				if ( host != null ) {
 					if ( !tscatalog.getHost().equals(host) ) {
 						doAdd = false;
-					}	
+					}
 				}
 				if ( hostName != null ) {
 					if ( !tscatalog.getHostName().equals(hostName) ) {
 						doAdd = false;
-					}	
+					}
 				}
 				if ( itemName != null ) {
 					if ( !tscatalog.getItemName().equals(itemName) ) {

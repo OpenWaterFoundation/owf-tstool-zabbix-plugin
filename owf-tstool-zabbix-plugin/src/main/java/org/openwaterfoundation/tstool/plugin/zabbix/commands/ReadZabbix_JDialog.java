@@ -36,6 +36,8 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -54,8 +56,10 @@ import javax.swing.SwingConstants;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
+import org.openwaterfoundation.tstool.plugin.zabbix.PluginMeta;
 import org.openwaterfoundation.tstool.plugin.zabbix.datastore.ZabbixDataStore;
 import org.openwaterfoundation.tstool.plugin.zabbix.ui.Zabbix_TimeSeries_InputFilter_JPanel;
+import org.openwaterfoundation.tstool.plugin.zabbix.util.ZabbixHelpViewerUrlFormatter;
 
 import riverside.datastore.DataStore;
 import rti.tscommandprocessor.core.TSCommandProcessor;
@@ -65,6 +69,7 @@ import RTi.Util.GUI.JGUIUtil;
 import RTi.Util.GUI.SimpleJButton;
 import RTi.Util.GUI.SimpleJComboBox;
 import RTi.Util.Help.HelpViewer;
+import RTi.Util.Help.HelpViewerUrlFormatter;
 import RTi.Util.IO.CommandProcessor;
 import RTi.Util.IO.PropList;
 import RTi.Util.Message.Message;
@@ -82,24 +87,24 @@ private SimpleJButton __ok_JButton = null;
 private SimpleJButton __help_JButton = null;
 private ReadZabbix_Command __command = null;
 private SimpleJComboBox __DataStore_JComboBox = null;
-private SimpleJComboBox __DataType_JComboBox;
-private SimpleJComboBox __Interval_JComboBox;
+private SimpleJComboBox __DataType_JComboBox = null;
+private SimpleJComboBox __Interval_JComboBox = null;
 private TSFormatSpecifiersJPanel __Alias_JTextField = null;
 private JTabbedPane __tsInfo_JTabbedPane = null;
 private JPanel __multipleTS_JPanel = null;
-private SimpleJComboBox __DataSource_JComboBox;
+private SimpleJComboBox __DataSource_JComboBox = null;
 private SimpleJComboBox __LocId_JComboBox = null;
-private JTextField __TSID_JTextField;
-private JTextField __InputStart_JTextField;
-private JTextField __InputEnd_JTextField;
-private JTextField __TimeZone_JTextField;
-private SimpleJComboBox __ShiftTrendToIntervalEnd_JComboBox;
-private JTextField __TextValue_JTextField;
-private SimpleJComboBox	__Debug_JComboBox;
+private JTextField __TSID_JTextField = null;
+private JTextField __InputStart_JTextField = null;
+private JTextField __InputEnd_JTextField = null;
+private JTextField __TimeZone_JTextField = null;
+private SimpleJComboBox __ShiftTrendToIntervalEnd_JComboBox = null;
+private JTextField __TextValue_JTextField = null;
+private SimpleJComboBox	__Debug_JComboBox = null;
 
 private JTextArea __command_JTextArea = null;
-// Contains all input filter panels.  Use the ZabbixSDataStore name/description and data type for each to
-// figure out which panel is active at any time.
+// Contains all input filter panels.
+// Use the ZabbixSDataStore name/description and data type for each to figure out which panel is active at any time.
 // Using the general panel and casting later causes a ClassCastException since classes are loaded in different ClassLoader.
 // private List<InputFilter_JPanel> __inputFilterJPanelList = new ArrayList<>();
 private List<Zabbix_TimeSeries_InputFilter_JPanel> __inputFilterJPanelList = new ArrayList<>();
@@ -139,12 +144,41 @@ public void actionPerformed( ActionEvent event ) {
         }
         catch ( Exception e ) {
             Message.printWarning(1, null, "Unable to display Zabbix web services documentation using \"" +
-                dataStoreDocumentation_JButton.getActionCommand() + "\"" );
+                dataStoreDocumentation_JButton.getActionCommand() + "\"." );
         }
     }
 	else if ( o == __help_JButton ) {
-		HelpViewer.getInstance().showHelp("command", "ReadZabbix",
-			"https://software.openwaterfoundation.org/tstool-kiwis-plugin/latest/doc-user");
+		// The HelpViewer handles how to start a web browser depending on the operating system.
+		Method newMethod = null;
+		try {
+			newMethod = HelpViewer.class.getMethod("showHelp", new Class[] {
+				String.class,
+				String.class,
+				HelpViewerUrlFormatter.class
+			});
+		}
+		catch ( NoSuchMethodException e ) {
+			newMethod = null;
+		}
+		if ( newMethod != null ) {
+			// This version displays the version documentation first and if not found latest.
+			// Use the following during transition.
+			try {
+				newMethod.invoke( HelpViewer.getInstance(), "command", "ReadZabbix", ZabbixHelpViewerUrlFormatter.getInstance() );
+			}
+			catch ( IllegalAccessException e ) {
+				Message.printWarning(1, null, "Unable to display ReadZabbix documentation." );
+			}
+			catch ( InvocationTargetException e ) {
+				Message.printWarning(1, null, "Unable to display ReadZabbix documentation." );
+			}
+			// Use the following at some point when all old plugin versions are not used.
+			//HelpViewer.getInstance().showHelp("command", "ReadZabbix", ZabbixHelpViewerUrlFormatter.getInstance() );
+		}
+		else {
+			// This version displays only the latest because version is not know to the application.
+			HelpViewer.getInstance().showHelp("command", "ReadZabbix", PluginMeta.getDocumentationRootUrl() );
+		}
 	}
     else if ( o == __ok_JButton ) {
         refresh ();
@@ -283,8 +317,8 @@ private void checkGUIState() {
 }
 
 /**
-Check the input.  If errors exist, warn the user and set the __error_wait flag
-to true.  This should be called before response() is allowed to complete.
+Check the input.  If errors exist, warn the user and set the __error_wait flag to true.
+This should be called before response() is allowed to complete.
 */
 private void checkInput () {
 	if ( __ignoreEvents ) {
@@ -382,8 +416,8 @@ private void checkInput () {
 }
 
 /**
-Commit the edits to the command.  In this case the command parameters have
-already been checked and no errors were detected.
+Commit the edits to the command.
+In this case the command parameters have already been checked and no errors were detected.
 */
 private void commitEdits () {
 	String DataStore = __DataStore_JComboBox.getSelected();
@@ -937,8 +971,8 @@ private void initialize ( JFrame parent, ReadZabbix_Command command ) {
 
 /**
 Initialize input filters for all of the available Zabbix datastores.
-The input filter panels will be layered on top of each other, but only one will be set visible, based on the
-other visible selections.
+The input filter panels will be layered on top of each other, but only one will be set visible,
+based on the other visible selections.
 @param parent_JPanel the panel to receive the input filter panels
 @param y position in the layout to add the input filter panel
 @param dataStoreList the list of available ZabbixDataStore
@@ -1504,7 +1538,7 @@ private void response ( boolean ok ) {
 			return;
 		}
 	}
-	// Now close out...
+	// Now close out.
 	setVisible( false );
 	dispose();
 }

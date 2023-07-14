@@ -26,17 +26,29 @@ public class PluginMeta {
 	/**
 	 * Plugin version.
 	 */
-	public static final String VERSION = "1.0.2 (2023-06-06)";
-	
+	public static final String VERSION = "1.0.3 (2023-07-13)";
+
 	/**
 	 * Get the documentation root URL, used for command help.
 	 * This should be the folder in which the index.html file exists, for example:
-	 *	  https://software.openwaterfoundation.org/owf-tstool-zabbix-plugin/latest/doc-user/
+	 *	  https://software.openwaterfoundation.org/tstool-zabbix-plugin/latest/doc-user/
+	 * Command documentation can be determined by appending "/command-ref/CommandName/" to this.
 	 */
-	public static String documentationRootUrl() {
-		// Hard code for now until figure out how to configure in the META
-		String url = "https://software.openwaterfoundation.org/owf-tstool-zabbix-plugin/latest/doc-user/";
+	public static String getDocumentationRootUrl() {
+		// Hard code for now until figure out how to configure in the META:
+		// - the ZabbixHelpViewerUrlFormatter will try matching the current version and then use 'latest'
+		String url = "https://software.openwaterfoundation.org/tstool-zabbix-plugin/latest/doc-user/";
 		return url;
+	}
+
+	/**
+	 * Get the semantic version (e.g., "1.2.3").
+	 * @return the semantic version (e.g., "1.2.3").
+	 */
+	public static String getSemanticVersion() {
+		// Parse from VERSION.
+		String [] parts = VERSION.split(" ");
+		return parts[0].trim();
 	}
 
 }

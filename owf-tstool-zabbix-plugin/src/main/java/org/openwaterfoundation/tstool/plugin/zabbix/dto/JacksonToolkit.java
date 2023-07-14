@@ -82,11 +82,12 @@ public class JacksonToolkit {
 	 * @param apiToken API token (will be added as a request property.
 	 * @param requestData JSON request string, as per Zabbix API.
 	 * @param dataElement the JSON element containing data to parse
+	 * @param timeout connection and read timeout (ms), negative to use the default HttpURLConnection timeout
 	 * @return the JSON to parse
 	 * @throws IOException
 	 * @throws MalformedURLException
 	 */
-	public String getJsonFromWebServiceUrl ( String url, String apiToken, String requestData, String dataElement )
+	public String getJsonFromWebServiceUrl ( String url, String apiToken, String requestData, String dataElement, int timeout )
 		throws IOException, MalformedURLException {
 		String routine = getClass().getSimpleName() + ".getJsonFromWebServicesUrl";
 		
@@ -95,7 +96,7 @@ public class JacksonToolkit {
 			MultiKeyStringDictionary requestProperties = new MultiKeyStringDictionary();
 			requestProperties.add("Content-Type", "application/json");
 			requestProperties.add("Authorizatione", "Bearer " + apiToken);
-			UrlReader urlReader = new UrlReader(url, requestProperties, requestData );
+			UrlReader urlReader = new UrlReader(url, requestProperties, requestData, timeout );
 			UrlResponse urlResponse = urlReader.read();
 			// Get the response for the initial request.
 			String responseJson = urlResponse.getResponse();

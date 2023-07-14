@@ -86,6 +86,13 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 	private String apiToken = "";
 
 	/**
+	 * Default timeout (ms) to use for URL requests.
+	 * This helps ensure that requests do not hang.
+	 * The default is 2 minutes.
+	 */
+	private int defaultTimeout = 120000;
+
+	/**
 	 * Properties for the plugin, used to help with application integration.
 	 */
 	private Map<String,Object> pluginProperties = new LinkedHashMap<>();
@@ -259,9 +266,9 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 	*
  	* Check the database requirement for DataStoreRequirementChecker interface, for example one of:
  	* <pre>
- 	* @require datastore kiwis-northern version >= 1.5.5
- 	* @require datastore kiwis-northern ?configproperty propname? == Something
- 	* @require datastore kiwis-northern configuration system_id == CO-District-MHFD
+ 	* @require datastore Zabbix-trilynx version >= 1.5.5
+ 	* @require datastore Zabbix-trilynx ?configproperty propname? == Something
+ 	* @require datastore Zabbix-trilynx configuration system_id == CO-District-MHFD
  	*
  	* @enabledif datastore nsdataws-mhfd version >= 1.5.5
  	* </pre>
@@ -508,6 +515,15 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 			// Return the 'auth' JSON.
 			return ", \"auth\": \"" + getApiToken() + "\"";
 		}
+	}
+	
+	/**
+	 * Return the default timeout for requests (ms).
+	 * Negative value means the timeout should not be used.
+	 * @return the default timeout for requests (ms).
+	 */
+	private int getDefaultTimeout () {
+		return this.defaultTimeout;
 	}
 
 	/**
@@ -1139,7 +1155,8 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 		Message.printStatus(2, routine, "Request data = " + requestData);
 		String dataElement = "result";  // 'result' contains an array of the objects.
 		try {
-			String historyJson = JacksonToolkit.getInstance().getJsonFromWebServiceUrl ( requestUrl, getApiToken(), requestData, dataElement );
+			String historyJson = JacksonToolkit.getInstance().getJsonFromWebServiceUrl (
+				requestUrl, getApiToken(), requestData, dataElement, getDefaultTimeout() );
 			List<History> history = JacksonToolkit.getInstance().getObjectMapper().readValue(historyJson, new TypeReference<List<History>>(){});
 			return history;
 		}
@@ -1186,7 +1203,8 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 		Message.printStatus(2, routine, "Reading hosts, requestData = " + requestData);
 		String dataElement = "result";  // 'result' contains an array of the objects.
 		try {
-			String hostJson = JacksonToolkit.getInstance().getJsonFromWebServiceUrl ( requestUrl, getApiToken(), requestData, dataElement );
+			String hostJson = JacksonToolkit.getInstance().getJsonFromWebServiceUrl (
+				requestUrl, getApiToken(), requestData, dataElement, getDefaultTimeout() );
 			List<Host> hosts = JacksonToolkit.getInstance().getObjectMapper().readValue(hostJson, new TypeReference<List<Host>>(){});
 			return hosts;
 		}
@@ -1218,7 +1236,8 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
     		+ "}";
 		String dataElement = "result";  // 'result' contains an array of the objects.
 		try {
-			String hostGroupJson = JacksonToolkit.getInstance().getJsonFromWebServiceUrl ( requestUrl, getApiToken(), requestData, dataElement );
+			String hostGroupJson = JacksonToolkit.getInstance().getJsonFromWebServiceUrl (
+				requestUrl, getApiToken(), requestData, dataElement, getDefaultTimeout() );
 			List<HostGroup> hostGroups = JacksonToolkit.getInstance().getObjectMapper().readValue(hostGroupJson, new TypeReference<List<HostGroup>>(){});
 			return hostGroups;
 		}
@@ -1259,7 +1278,8 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 		Message.printStatus(2, routine, "Request data = " + requestData);
 		String dataElement = "result";  // 'result' contains an array of the objects.
 		try {
-			String itemJson = JacksonToolkit.getInstance().getJsonFromWebServiceUrl ( requestUrl, getApiToken(), requestData, dataElement );
+			String itemJson = JacksonToolkit.getInstance().getJsonFromWebServiceUrl (
+				requestUrl, getApiToken(), requestData, dataElement, getDefaultTimeout() );
 			List<Item> items = JacksonToolkit.getInstance().getObjectMapper().readValue(itemJson, new TypeReference<List<Item>>(){});
 			return items;
 		}
@@ -1299,7 +1319,8 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 		String dataElement = "result";  // 'result' contains an array of the objects.
 		Message.printStatus(2, routine, "Reading templates, requestData = " + requestData);
 		try {
-			String templateJson = JacksonToolkit.getInstance().getJsonFromWebServiceUrl ( requestUrl, getApiToken(), requestData, dataElement );
+			String templateJson = JacksonToolkit.getInstance().getJsonFromWebServiceUrl (
+				requestUrl, getApiToken(), requestData, dataElement, getDefaultTimeout() );
 			List<Template> templates = JacksonToolkit.getInstance().getObjectMapper().readValue(templateJson, new TypeReference<List<Template>>(){});
 			/*
 			for ( Template template : templates ) {
@@ -1423,7 +1444,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
     	TSIdent tsidentReq = TSIdent.parseIdentifier(tsidReq);
 
     	// Up front, check for invalid request and throw exceptions:
-   		// - some cases are OK as long as IrregularInterval was specified in ReadKiWIS
+   		// - some cases are OK as long as IrregularInterval was specified in ReadZabbix
 
     	// Time series catalog for the single matching time series.
  		TimeSeriesCatalog tscatalog = null;
@@ -2283,7 +2304,8 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
 		Message.printStatus(2, routine, "Request data = " + requestData);
 		String dataElement = "result";  // 'result' contains an array of the objects.
 		try {
-			String trendJson = JacksonToolkit.getInstance().getJsonFromWebServiceUrl ( requestUrl, getApiToken(), requestData, dataElement );
+			String trendJson = JacksonToolkit.getInstance().getJsonFromWebServiceUrl (
+				requestUrl, getApiToken(), requestData, dataElement, getDefaultTimeout() );
 			List<Trend> trend = JacksonToolkit.getInstance().getObjectMapper().readValue(trendJson, new TypeReference<List<Trend>>(){});
 			return trend;
 		}
@@ -2316,7 +2338,8 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
     		+ "}";
 		String dataElement = null;  // Version is at the root of the response.
 		try {
-			String userLoginJson = JacksonToolkit.getInstance().getJsonFromWebServiceUrl ( requestUrl, getApiToken(), requestData, dataElement );
+			String userLoginJson = JacksonToolkit.getInstance().getJsonFromWebServiceUrl (
+				requestUrl, getApiToken(), requestData, dataElement, getDefaultTimeout() );
 			if ( Message.isDebugOn ) {
 				Message.printDebug(1, routine, "User login JSON=" + userLoginJson);
 			}
@@ -2345,7 +2368,8 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
     		+ "}";
 		String dataElement = null;  // Version is at the root of the response.
 		try {
-			String versionJson = JacksonToolkit.getInstance().getJsonFromWebServiceUrl ( requestUrl, getApiToken(), requestData, dataElement );
+			String versionJson = JacksonToolkit.getInstance().getJsonFromWebServiceUrl (
+				requestUrl, getApiToken(), requestData, dataElement, getDefaultTimeout() );
 			if ( Message.isDebugOn ) {
 				Message.printDebug(1, routine, "Version JSON=" + versionJson);
 			}

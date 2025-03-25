@@ -1433,7 +1433,7 @@ public class ZabbixDataStore extends AbstractWebServiceDataStore implements Data
     			}
     			else if ( propObject instanceof Integer ) {
     				// Integer number was passed.
-    				textValue = new Double((Integer)propObject);
+    				textValue = Double.valueOf((Integer)propObject);
     			}
     		}
     	}

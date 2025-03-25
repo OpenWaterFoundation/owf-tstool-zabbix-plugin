@@ -321,7 +321,7 @@ private HashMap<String,Object> createReadProperties ( int its, int itsReverse,
 	if ( (timezone != null) && !timezone.isEmpty() ) {
 		readProperties.put("TimeZone", timezone );
 	}
-	readProperties.put("ShiftTrendToIntervalEnd", new Boolean(shiftTrendToIntervalEnd) );
+	readProperties.put("ShiftTrendToIntervalEnd", Boolean.valueOf(shiftTrendToIntervalEnd) );
 	if ( (textValue != null) && !textValue.isEmpty() ) {
 		if ( textValue.equalsIgnoreCase("TimeSeriesCount") ) {
 			// Set the value as the count of time series (1+).
@@ -337,7 +337,7 @@ private HashMap<String,Object> createReadProperties ( int its, int itsReverse,
 		}
 	}
 	if ( debug ) {
-		readProperties.put("Debug", new Boolean(true) );
+		readProperties.put("Debug", Boolean.TRUE );
 	}
 	return readProperties;
 }
@@ -423,7 +423,7 @@ throws InvalidCommandParameterException, CommandWarningException, CommandExcepti
     CommandStatus status = getCommandStatus();
     status.clearLog(commandPhase);
 
-    Boolean clearStatus = new Boolean(true); // Default.
+    Boolean clearStatus = Boolean.TRUE; // Default.
     try {
     	Object o = processor.getPropContents("CommandsShouldClearRunStatus");
     	if ( o != null ) {

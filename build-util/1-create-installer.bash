@@ -1,8 +1,8 @@
 #!/bin/bash
 #
 # Create the plugin installer file for the download website:
-# - the current files in the following folder are zipped
-#   ./tstool/NN/plugins/owf-tstool-zabbix-plugin/
+# - the current files in the following folder are zipped, keeping the plugin main folder:
+#   ./tstool/NN/plugins/owf-tstool-zabbix-plugin/${pluginVersion}
 # - output is to the plugin 'dist' folder with filename like:
 #     tstool-zabbix-plugin-1.0.0-win-2206060102.zip
 #   where the number is YYMMDDHHMM
@@ -32,12 +32,12 @@ checkOperatingSystem() {
   echoStderr "[INFO] operatingSystem=${operatingSystem} (used to check for Cygwin and filemode compatibility)"
 
   if [ "${operatingSystem}" != "mingw" ]; then
-    echoStderr "[ERROR] ${errorColor}Currently this script only works for MINGW (Git Bash)${endColor}"
+    echoStderr "${errorColor}[ERROR] Currently this script only works for MINGW (Git Bash)${endColor}"
     exit 1
   fi
 }
 
-# Determine which echo to use, needs to support -e to output colored text
+# Determine which echo to use, needs to support -e to output colored text:
 # - normally built-in shell echo is OK, but on Debian Linux dash is used, and it does not support -e
 configureEcho() {
   echo2='echo -e'
@@ -77,11 +77,13 @@ createPluginZipFile() {
     echoStderr "[INFO] Removing existing zip file:  ${zipFile}"
     rm -f "${zipFile}"
   fi
-  # Change to the plugins folder.
+  # Change to the plugins folder:
+  # - only want to include the specific version,
+  #   but also include the parent of the version folder
   cd ${pluginsFolder}
   echoStderr "[INFO] Running 7zip to create zip file:  ${zipFile}"
   echoStderr "[INFO] Current folder is:  ${pluginsFolder}"
-  "${sevenzip}" a -tzip ${zipFile} owf-tstool-zabbix-plugin
+  "${sevenzip}" a -tzip ${zipFile} "owf-tstool-zabbix-plugin/${pluginVersion}"
   exitStatus=$?
   if [ ${exitStatus} -ne 0 ]; then
     echoStderr "[INFO] Error running 7zip, exit status (${exitStatus})."
@@ -105,8 +107,7 @@ getPluginVersion() {
   # Maven folder structure results in duplicate 'owf-tstool-zabbix-plugin'?
   # TODO smalers 2022-05-19 need to enable this.
   srcFile="${repoFolder}/owf-tstool-zabbix-plugin/src/main/java/org/openwaterfoundation/tstool/plugin/zabbix/PluginMeta.java"  
-  # Get the version from the code
-  # line looks like:
+  # Get the version from the code line like:
   #  public static final String VERSION = "1.0.0 (2022-05-27)";
   if [ -f "${srcFile}" ]; then
     cat ${srcFile} | grep 'VERSION =' | cut -d '"' -f 2 | cut -d ' ' -f 1 | tr -d '"' | tr -d ' '
@@ -122,8 +123,8 @@ getPluginVersion() {
 # - the version is printed to stdout so assign function output to a variable
 getTSToolMajorVersion() {
   srcFile="${tstoolMainRepoFolder}/src/DWR/DMI/tstool/TSToolMain.java"  
-  # Get the version from the code.
-  # line looks like:   this.pluginProperties.put("Version", "1.2.0 (2020-05-29");
+  # Get the version from the code line like:
+  #   this.pluginProperties.put("Version", "1.2.0 (2020-05-29");
   cat ${srcFile} | grep 'public static final String PROGRAM_VERSION' | cut -d '=' -f 2 | cut -d '(' -f 1 | tr -d ' ' | tr -d '"' | cut -d '.' -f 1
 }
 
@@ -168,8 +169,7 @@ else
   echoStderr "[INFO] TSTool major version:  ${tstoolMajorVersion}"
 fi
 
-# Get the plugin version, which is used in the installer file name:
-# 
+# Get the plugin version, which is used in the installer file name.
 pluginVersion=$(getPluginVersion)
 if [ -z "${pluginVersion}" ]; then
   echoStderr "[ERROR] ${errorColor}Unable to determine plugin version.${endColor}"
@@ -182,15 +182,27 @@ fi
 # - put after determining versions
 # - the folders adhere to Maven folder structure
 devBinFolder="${repoFolder}/owf-tstool-zabbix-plugin/target/classes"
+
+# Main folder for installed plugins.
 pluginsFolder="${HOME}/.tstool/${tstoolMajorVersion}/plugins"
-jarFolder="${pluginsFolder}/owf-tstool-zabbix-plugin"
-pluginDepFolder="${pluginsFolder}/owf-tstool-zabbix-plugin/dep"
-jarFile="${jarFolder}/owf-tstool-zabbix-plugin-${pluginVersion}.jar"
+
+# Main installed folder for the plugin.
+mainPluginFolder="${pluginsFolder}/owf-tstool-zabbix-plugin"
+
+# Version installed folder for the plugin.
+versionPluginFolder="${mainPluginFolder}/${pluginVersion}"
+
+# Jar file for the plugin.
+jarFile="${versionPluginFolder}/owf-tstool-zabbix-plugin-${pluginVersion}.jar"
+
+# Folder for dependencies.
+pluginDepFolder="${versionPluginsFolder}/dep"
+
 now=$(date +%Y%m%d%H%M)
 zipFile="${distFolder}/tstool-zabbix-plugin-${pluginVersion}-win-${now}.zip"
 
 # Create the local plugin files to make sure they are current.
-echoStderr "Creating the jar file with current development files..."
+echoStderr "[INFO] Creating the jar file with current development files..."
 ${scriptFolder}/0-create-plugin-jar.bash
 if [ $? -ne 0 ]; then
   echoStderr "[ERROR] Error creating plugin jar file."

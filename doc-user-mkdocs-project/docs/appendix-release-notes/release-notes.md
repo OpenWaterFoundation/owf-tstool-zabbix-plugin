@@ -1,13 +1,50 @@
 # TSTool / Zabbix Data Web Services Plugin / Release Notes #
 
-*   [Changes in Version 1.0.3](#changes-in-version-103)
-*   [Changes in Version 1.0.2](#changes-in-version-102)
-*   [Changes in Version 1.0.1](#changes-in-version-101)
-*   [Changes in Version 1.0.0](#changes-in-version-100)
+Release notes are available for the core TSTool product and plugin.
+The core software and plugins are maintained separately and may be updated at different times.
+
+*   [TSTool core product release notes](http://opencdss.state.co.us/tstool/latest/doc-user/appendix-release-notes/release-notes/)
+*   [TSTool Version Compatibility](#tstool-version-compatibility)
+*   [Release Note Details](#release-note-details)
+
+----
+
+## TSTool Version Compatibility ##
+
+The following table lists TSTool and plugin software version compatibility.
+
+**<p style="text-align: center;">
+TSTool and Plugin Version Compatibility
+</p>**
+
+| **Plugin Version** | **Required TSTool Version** | **Comments** |
+| -- | -- | -- |
+| 2.0.0 | >=  15.0.0 | TSTool and plugin updated to Java 11, new plugin manager. |
+| 1.0.3 | >= 14.8.5 | |
+| 1.0.1 | >= 14.8.2 | |
+| 1.0.0 | >= 14.8.1 | |
+
+## Release Note Details ##
+
+*   [Version 2.0.0](#version-200)
+*   [Version 1.0.3](#version-103)
+*   [Version 1.0.2](#version-102)
+*   [Version 1.0.1](#version-101)
+*   [Version 1.0.0](#version-100)
 
 ----------
 
-## Changes in Version 1.0.3 ##
+## Version 2.0.0 ##
+
+**Major release to use Java 11.**
+
+*   ![change](change.png) Update the plugin to use Java 11:
+    +   The Java version is consistent with TSTool 15.0.0.
+    *   The plugin installation now uses a version folder,
+        which allows multiple versions of the plugin to be installed at the same time,
+        for use with different versions of TSTool.
+
+## Version 1.0.3 ##
 
 **Maintenance release - fix bug when viewing documentation.**
 
@@ -26,7 +63,7 @@
     This has been implemented to prevent TSTool from hanging if Zabbix web services are unavailable,
     for example during system maintenance.
 
-## Changes in Version 1.0.2 ##
+## Version 1.0.2 ##
 
 **Maintenance release - fix bugs related to identifying and reading time series.**
 
@@ -40,7 +77,7 @@
 *   ![bug](bug.png) [1.0.2] Update the [`ReadZabbix`](../command-ref/ReadZabbix/ReadZabbix.md) command:
     +   Fix bug where the period end for reading time series was not being handled correctly (was set to the start).
 
-## Changes in Version 1.0.1 ##
+## Version 1.0.1 ##
 
 **Maintenance release - fix bugs found in the initial release.**
 
@@ -58,7 +95,7 @@
     +   Add the `TextValue` command parameter to provide a numerical value for history time series that contain text.
         The text is set as the data flag and the numerical value is used for graphs.
 
-## Changes in Version 1.0.0 ##
+## Version 1.0.0 ##
 
 **Feature release - initial production release.**
 

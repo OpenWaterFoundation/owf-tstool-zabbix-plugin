@@ -25,60 +25,43 @@ Multiple versions of TSTool can be installed at the same time.
 
 ## Install and Configure the TSTool Zabbix Web Services Plugin ##
 
-This documentation describes how to install and configure the TSTool Zabbix plugin.
-
-The folder structure on the computer should be similar to the following.
-The `plugins-old` folder is an archive of old plugin versions in case versions need to be switched.
+The plugin installation folder structure is as follows and is explained below.
+The convention of using a version folder (e.g., `2.0.0`) was introduced in TSTool 15.0.0.
 
 ```
-Windows:
-
-       C:\Users\user\.tstool\14\
-         plugins\
-           owf-tstool-zabbix-plugin\
-             owf-tstool-zabbix-plugin-1.1.2.jar
-         plugins-old\
-           owf-tstool-zabbix-plugin\
-             owf-tstool-zabbix-plugin-1.1.1.jar
-
-Linux:
-
-       /home/user/.tstool/14/
-         plugins/
-           owf-tstool-zabbix-plugin-1.1.2.jar
-         plugins-old/
-           owf-tstool-zabbix-plugin-1.1.1.jar
+C:\Users\user\.tstool\NN\plugins\owf-tstool-zabbix-plugin\    (Windows)
+/home/user/.tstool/NN/plugins/owf-tstool-zabbix-plugin/       (Linux)
+  1.0.3/
+    owf-tstool-zabbix-plugin-1.0.3.jar
+    dep/
+  2.0.0/
+    owf-tstool-zabbix-plugin-2.0.0.jar
+    dep/
 ```
 
-On Windows, the installation folder in Windows Explorer will be similar to the following:
+To install the plugin:
 
-**<p style="text-align: center;">
-![windows-plugins](windows-plugins.png)
-</p>**
-
-**<p style="text-align: center;">
-Zabbix Plugins Folders on Windows (<a href="../windows-plugins.png">see full-size image)</a>
-</p>**
-
-To install or update the plugin:
-
-1.  Download the `tstool-zabbix-plugin` software installer file from the
+1.  TSTool must have been previously installed and run at least once.
+    This will ensure that folders are properly created and, if appropriate,
+    a previous version's files will be copied to a new major version run for the first time.
+2.  Download the `tstool-zabbix-plugin` software installer file from the
     [TSTool Zabbix Download page](https://software.openwaterfoundation.org/tstool-zabbix-plugin/).
-    For example with a name similar to `tstool-zabbix-plugin-1.0.0-win-202305232446.zip`.
-2.  If installing the plugin in user files and if TSTool was not run before,
-    run TSTool once to automatically create user folders and files needed by the plugin.
-3.  If an old version of the plugin was previous installed,
-    delete the old `jar` file or move to the `plugins-old/` folder to archive.
-    Only one copy of the plugin `jar` file can be found in the `plugins` folder to avoid software conflicts.
-    If the Zabbix plugin features are not functioning properly, it may be due to conflicting jar files.
-    The `plugins-old` folder is not necessary and is just a local copy of old versions to facilitate troubleshooting.
-4.  Expand the zip file or navigate to the zip file in Windows Explorer.
-    Copy the top-level folder in the zip file to the TSTool `plugins` folder
-    as shown in the above folder structure.
-5.  Configure one or more datastore configuration files according to the
+    For example with a name similar to `tstool-zabbix-plugin-2.0.0-win-202503250937.zip`.
+3.  The plugin installation folders are as shown above.
+    If installing the plugin in system files on Linux, install in the following folder:
+    `/opt/tstool-version/plugins/`
+4.  If an old version of the plugin was previous installed and does not exist in a version folder:
+    1.  Create a folder with the version (e.g., `1.2.3`) consistent with the software
+        and move the files into the folder.
+        The files will be available to TSTool versions that are compatible.
+    2.  Delete the files if not needed.
+5.  Copy files from the `zip` file to the `owf-tstool-zabbix-plugin` folder as shown in the above example:
+    *   Windows:  Use File Explorer, 7-Zip, or other software to extract files.
+    *   Linux:  Unzip the `zip` file to a temporary folder and copy the files.
+6.  Configure one or more datastore configuration files according to the
     [Zabbix Data Web Services Datastore](../datastore-ref/Zabbix/Zabbix.md#datastore-configuration-file) documentation.
-6.  Test web services access using TSTool by selecting the datastore name that was configured and selecting time series.
-7.  If there are issues, use the ***View / Datastores*** menu item to list enabled datastores.
-8.  If necessary, see the [Troubleshooting](../troubleshooting/troubleshooting.md) documentation.
-
-TSTool will be enhanced in the future to provide a "plugin manager" to help with these tasks.
+7.  Restart TSTool.
+8.  Test web services access using TSTool by selecting the datastore name that was configured and selecting time series.
+9.  If there are issues, use the ***View / Datastores*** menu item to list enabled datastores.
+10. If necessary, see the [Troubleshooting](../troubleshooting/troubleshooting.md) documentation.
+11. For TSTool 15.0.0 and later, use the TSTool ***Tools / Plugin Manager*** menu to review installed plugins.

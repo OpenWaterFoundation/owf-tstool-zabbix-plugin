@@ -18,6 +18,8 @@
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry combineaccessrules="false" kind="src" path="/cdss-lib-common-java"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/cdss-lib-processor-ts-java"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-11">
 		<attributes>
 			<attribute name="module" value="true"/>
@@ -29,11 +31,9 @@
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry combineaccessrules="false" kind="src" path="/cdss-lib-common-java"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/cdss-lib-processor-ts-java"/>
-	<classpathentry kind="lib" path="/cdss-lib-common-java/lib/Jackson/jackson-annotations-2.9.10.jar"/>
-	<classpathentry kind="lib" path="/cdss-lib-common-java/lib/Jackson/jackson-core-2.9.10.jar"/>
-	<classpathentry kind="lib" path="/cdss-lib-common-java/lib/Jackson/jackson-databind-2.9.10.jar"/>
-	<classpathentry kind="lib" path="/cdss-lib-common-java/lib/Jackson/jackson-datatype-jsr310-2.9.10.jar"/>
+	<classpathentry kind="lib" path="/cdss-lib-common-java/lib/Jackson/jackson-annotations-2.15.4.jar"/>
+	<classpathentry kind="lib" path="/cdss-lib-common-java/lib/Jackson/jackson-core-2.15.4.jar"/>
+	<classpathentry kind="lib" path="/cdss-lib-common-java/lib/Jackson/jackson-databind-2.15.4.jar"/>
+	<classpathentry kind="lib" path="/cdss-lib-common-java/lib/Jackson/jackson-datatype-jsr310-2.15.4.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>
